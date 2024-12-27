@@ -1,0 +1,53 @@
+org: ${env:SLS_ORG}
+service: disdb-user-api
+
+provider:
+  name: aws
+  runtime: python3.9
+  iam:
+    role: ${env:AWS_ROLE_ARN}
+  memorySize: 1024
+  timeout: 30
+  environment:
+    TABLE_NAME: ${sls:stage}-disdb-user-table
+    SERVICE_NAME: disdb-user-api
+    STAGE: ${sls:stage}
+
+functions:
+  disdb_user_register:
+    handler: register.lambda_handler
+    events:
+      - http:
+          path: /user/register
+          method: post
+          cors: true
+          integration: lambda
+
+  disdb_user_login:
+    handler: login.lambda_handler
+    events:
+      - http:
+          path: /user/login
+          method: post
+          cors: true
+          integration: lambda
+
+resources:
+  Resources:
+    DisdbUsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.TABLE_NAME}
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true

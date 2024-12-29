@@ -6,7 +6,7 @@ import os
 from boto3.dynamodb.conditions import Key
 
 def generate_short_code():
-    """Genera los primeros 8 caracteres de un UUID."""
+    """Generates the first 8 characters of a UUID."""
     return str(uuid.uuid4())[:8].upper()
 
 def lambda_handler(event, context):
@@ -15,25 +15,26 @@ def lambda_handler(event, context):
         table_name = os.environ['TABLE_NAME']
         table = dynamodb.Table(table_name)
 
-        tenant_id = event['body'].get('tenant_id')
         email = event['body'].get('email')
         password = event['body'].get('password')
-        role = event['body'].get('role')  # 'distributor' o 'delivery_person'
+        role = event['body'].get('role')  # 'distributor' or 'delivery_person'
+        name = event['body'].get('name')
+        lastName = event['body'].get('lastName')
 
-        if not all([tenant_id, email, password, role]):
+        if not all([email, password, role, name, lastName]):
             return {
                 'statusCode': 400,
                 'body': {'error': 'Faltan campos requeridos'}
             }
 
-        # Validar que el rol sea válido
+        # Check role
         if role not in ['distributor', 'delivery_person']:
             return {
                 'statusCode': 400,
                 'body': {'error': 'Rol no válido. Debe ser distributor o delivery_person'}
             }
 
-        # Comprobar si el email ya está registrado
+        # Check if the email is already registered
         response = table.query(
             IndexName='email-index',
             KeyConditionExpression=Key('email').eq(email)
@@ -45,10 +46,10 @@ def lambda_handler(event, context):
                 'body': {'error': 'El email ya está registrado'}
             }
 
-        # Crear usuario según el rol
+        # Create user
         user_id = str(uuid.uuid4())
         if role == 'distributor':
-            # Generar un código único y verificar su unicidad
+            # Generate short_code
             while True:
                 short_code = generate_short_code()
                 code_check = table.query(
@@ -63,11 +64,12 @@ def lambda_handler(event, context):
             item = {
                 'PK': pk,
                 'SK': sk,
-                'tenant_id': tenant_id,
                 'email': email,
                 'password_hash': hashlib.sha256(password.encode()).hexdigest(),
                 'role': role,
                 'short_code': short_code,
+                'name': name,
+                'lastName': lastName,
                 'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
         else:  # role == 'delivery_person'
@@ -76,34 +78,34 @@ def lambda_handler(event, context):
             item = {
                 'PK': pk,
                 'SK': sk,
-                'tenant_id': tenant_id,
                 'email': email,
                 'password_hash': hashlib.sha256(password.encode()).hexdigest(),
                 'role': role,
+                'name': name,
+                'lastName': lastName,
                 'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
 
-        # Guardar el usuario en DynamoDB
+        # Save in DynamoDB
         table.put_item(Item=item)
 
         return {
-            'statusCode': 201,
+            'statusCode': 200,
             'body': {
-                'message': 'Usuario registrado exitosamente',
+                'message': 'Account created successfully',
                 'user_id': user_id,
                 'role': role,
-                'short_code': short_code if role == 'distributor' else None
             }
         }
 
     except KeyError as e:
         return {
             'statusCode': 400,
-            'body': {'error': f'Campo requerido no encontrado: {str(e)}'}
+            'body': {'error': f'Required field not found: {str(e)}'}
         }
     except Exception as e:
         print("Error:", str(e))
         return {
             'statusCode': 500,
-            'body': {'error': 'Error interno del servidor', 'details': str(e)}
+            'body': {'error': 'Internal Server Error', 'details': str(e)}
         }

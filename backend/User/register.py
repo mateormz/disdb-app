@@ -20,18 +20,19 @@ def lambda_handler(event, context):
         role = event['body'].get('role')  # 'distributor' or 'delivery_person'
         name = event['body'].get('name')
         lastName = event['body'].get('lastName')
+        phoneNumber = event['body'].get('phoneNumber')
 
-        if not all([email, password, role, name, lastName]):
+        if not all([email, password, role, name, lastName, phoneNumber]):
             return {
                 'statusCode': 400,
-                'body': {'error': 'Faltan campos requeridos'}
+                'body': {'error': 'Missing required fields'}
             }
 
-        # Check role
+        # Validate the role
         if role not in ['distributor', 'delivery_person']:
             return {
                 'statusCode': 400,
-                'body': {'error': 'Rol no válido. Debe ser distributor o delivery_person'}
+                'body': {'error': 'Invalid role. Must be distributor or delivery_person'}
             }
 
         # Check if the email is already registered
@@ -43,13 +44,13 @@ def lambda_handler(event, context):
         if response['Items']:
             return {
                 'statusCode': 400,
-                'body': {'error': 'El email ya está registrado'}
+                'body': {'error': 'The email is already registered'}
             }
 
-        # Create user
+        # Create the user
         user_id = str(uuid.uuid4())
         if role == 'distributor':
-            # Generate short_code
+            # Generate a unique short code
             while True:
                 short_code = generate_short_code()
                 code_check = table.query(
@@ -70,6 +71,7 @@ def lambda_handler(event, context):
                 'short_code': short_code,
                 'name': name,
                 'lastName': lastName,
+                'phoneNumber': phoneNumber,
                 'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
         else:  # role == 'delivery_person'
@@ -83,10 +85,11 @@ def lambda_handler(event, context):
                 'role': role,
                 'name': name,
                 'lastName': lastName,
+                'phoneNumber': phoneNumber,
                 'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
 
-        # Save in DynamoDB
+        # Save the user to DynamoDB
         table.put_item(Item=item)
 
         return {

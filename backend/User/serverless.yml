@@ -7,7 +7,7 @@ provider:
   iam:
     role: ${env:AWS_ROLE_ARN}
   memorySize: 1024
-  timeout: 30
+  timeout: 29
   environment:
     # Tables
     TABLE_USERS: ${sls:stage}-disdb-user-table

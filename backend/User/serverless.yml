@@ -24,7 +24,7 @@ provider:
     STAGE: ${sls:stage}
 
 functions:
-  disdb_user_register:
+  user_register:
     handler: register.lambda_handler
     events:
       - http:
@@ -33,7 +33,7 @@ functions:
           cors: true
           integration: lambda
 
-  disdb_user_login:
+  user_login:
     handler: login.lambda_handler
     events:
       - http:
@@ -42,7 +42,7 @@ functions:
           cors: true
           integration: lambda
 
-  disdb_validateToken:
+  validateToken:
     handler: validateToken.lambda_handler
     events:
       - http:

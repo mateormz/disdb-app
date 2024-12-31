@@ -1,50 +1,71 @@
 import boto3
 import hashlib
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from boto3.dynamodb.conditions import Key
+
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
 
 def generate_short_code():
     """Generates the first 8 characters of a UUID."""
     return str(uuid.uuid4())[:8].upper()
 
+
 def lambda_handler(event, context):
     try:
         dynamodb = boto3.resource('dynamodb')
-        table_name = os.environ['TABLE_USERS']
-        table = dynamodb.Table(table_name)
+        user_table_name = os.environ['TABLE_USERS']
+        token_table_name = os.environ['TABLE_TOKENS']
+        user_table = dynamodb.Table(user_table_name)
+        token_table = dynamodb.Table(token_table_name)
 
-        email = event['body'].get('email')
-        password = event['body'].get('password')
-        role = event['body'].get('role')  # 'distributor' or 'delivery_person'
-        name = event['body'].get('name')
-        lastName = event['body'].get('lastName')
-        phoneNumber = event['body'].get('phoneNumber')
+        # Parse the request body
+        body = event.get('body')
+        if not body:
+            return {
+                "statusCode": 400,
+                "headers": {"Content-Type": "application/json"},
+                "body": {"error": "Request body is missing"}
+            }
+
+        body = json.loads(body)
+        email = body.get('email')
+        password = body.get('password')
+        role = body.get('role')  # 'distributor' or 'delivery_person'
+        name = body.get('name')
+        lastName = body.get('lastName')
+        phoneNumber = body.get('phoneNumber')
 
         if not all([email, password, role, name, lastName, phoneNumber]):
             return {
-                'statusCode': 400,
-                'body': {'error': 'Missing required fields'}
+                "statusCode": 400,
+                "headers": {"Content-Type": "application/json"},
+                "body": {"error": "Missing required fields"}
             }
 
         # Validate the role
         if role not in ['distributor', 'delivery_person']:
             return {
-                'statusCode': 400,
-                'body': {'error': 'Invalid role. Must be distributor or delivery_person'}
+                "statusCode": 400,
+                "headers": {"Content-Type": "application/json"},
+                "body": {"error": "Invalid role. Must be distributor or delivery_person"}
             }
 
         # Check if the email is already registered
-        response = table.query(
+        response = user_table.query(
             IndexName=os.environ['INDEX_EMAIL_USERS'],
             KeyConditionExpression=Key('email').eq(email)
         )
 
         if response['Items']:
             return {
-                'statusCode': 400,
-                'body': {'error': 'The email is already registered'}
+                "statusCode": 400,
+                "headers": {"Content-Type": "application/json"},
+                "body": {"error": "The email is already registered"}
             }
 
         # Create the user
@@ -53,7 +74,7 @@ def lambda_handler(event, context):
             # Generate a unique short code
             while True:
                 short_code = generate_short_code()
-                code_check = table.query(
+                code_check = user_table.query(
                     IndexName=os.environ['INDEX_SHORTCODE_USERS'],
                     KeyConditionExpression=Key('short_code').eq(short_code)
                 )
@@ -66,7 +87,7 @@ def lambda_handler(event, context):
                 'PK': pk,
                 'SK': sk,
                 'email': email,
-                'password_hash': hashlib.sha256(password.encode()).hexdigest(),
+                'password_hash': hash_password(password),
                 'role': role,
                 'short_code': short_code,
                 'name': name,
@@ -81,7 +102,7 @@ def lambda_handler(event, context):
                 'PK': pk,
                 'SK': sk,
                 'email': email,
-                'password_hash': hashlib.sha256(password.encode()).hexdigest(),
+                'password_hash': hash_password(password),
                 'role': role,
                 'name': name,
                 'lastName': lastName,
@@ -90,25 +111,36 @@ def lambda_handler(event, context):
             }
 
         # Save the user to DynamoDB
-        table.put_item(Item=item)
+        user_table.put_item(Item=item)
+
+        # Create a token
+        token = str(uuid.uuid4())
+        expiration = (datetime.now() + timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')
+
+        # Store the token in the tokens table
+        token_table.put_item(
+            Item={
+                'token': token,
+                'expiration': expiration
+            }
+        )
 
         return {
-            'statusCode': 200,
-            'body': {
-                'message': 'Account created successfully',
-                'user_id': user_id,
-                'role': role,
+            "statusCode": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": {
+                "token": token,
+                "expires": expiration,
+                "PK": pk,
+                "SK": sk,
+                "role": role
             }
         }
 
-    except KeyError as e:
-        return {
-            'statusCode': 400,
-            'body': {'error': f'Required field not found: {str(e)}'}
-        }
     except Exception as e:
         print("Error:", str(e))
         return {
-            'statusCode': 500,
-            'body': {'error': 'Internal Server Error', 'details': str(e)}
+            "statusCode": 500,
+            "headers": {"Content-Type": "application/json"},
+            "body": {"error": "Internal Server Error", "details": str(e)}
         }

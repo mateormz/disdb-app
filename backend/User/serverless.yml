@@ -9,7 +9,17 @@ provider:
   memorySize: 1024
   timeout: 30
   environment:
-    TABLE_NAME: ${sls:stage}-disdb-user-table
+    # Tables
+    TABLE_USERS: ${sls:stage}-disdb-user-table
+    TABLE_TOKENS: ${sls:stage}-disdb-tokens-table
+
+    # Index user
+    INDEX_EMAIL_USERS: email-index
+    INDEX_SHORTCODE_USERS: short-code-index
+
+    # Index token
+    INDEX_TOKENS: token-index
+    
     SERVICE_NAME: disdb-user-api
     STAGE: ${sls:stage}
 
@@ -32,12 +42,21 @@ functions:
           cors: true
           integration: lambda
 
+  disdb_validateToken:
+    handler: validateToken.lambda_handler
+    events:
+      - http:
+          path: /token/validate
+          method: post
+          cors: true
+          integration: lambda
+
 resources:
   Resources:
     DisdbUsersTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: ${self:provider.environment.TABLE_NAME}
+        TableName: ${self:provider.environment.TABLE_USERS}
         AttributeDefinitions:
           - AttributeName: PK
             AttributeType: S
@@ -53,15 +72,36 @@ resources:
           - AttributeName: SK
             KeyType: RANGE
         GlobalSecondaryIndexes:
-          - IndexName: email-index
+          - IndexName: ${self:provider.environment.INDEX_EMAIL_USERS}
             KeySchema:
               - AttributeName: email
                 KeyType: HASH
             Projection:
               ProjectionType: ALL
-          - IndexName: short-code-index
+          - IndexName: ${self:provider.environment.INDEX_SHORTCODE_USERS}
             KeySchema:
               - AttributeName: short_code
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+
+    DisdbTokensTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.TABLE_TOKENS}
+        AttributeDefinitions:
+          - AttributeName: token
+            AttributeType: S
+        KeySchema:
+          - AttributeName: token
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: ${self:provider.environment.INDEX_TOKENS}
+            KeySchema:
+              - AttributeName: token
                 KeyType: HASH
             Projection:
               ProjectionType: ALL

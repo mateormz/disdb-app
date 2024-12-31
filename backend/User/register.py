@@ -12,7 +12,7 @@ def generate_short_code():
 def lambda_handler(event, context):
     try:
         dynamodb = boto3.resource('dynamodb')
-        table_name = os.environ['TABLE_NAME']
+        table_name = os.environ['TABLE_USERS']
         table = dynamodb.Table(table_name)
 
         email = event['body'].get('email')
@@ -37,7 +37,7 @@ def lambda_handler(event, context):
 
         # Check if the email is already registered
         response = table.query(
-            IndexName='email-index',
+            IndexName=os.environ['INDEX_EMAIL_USERS'],
             KeyConditionExpression=Key('email').eq(email)
         )
 
@@ -54,7 +54,7 @@ def lambda_handler(event, context):
             while True:
                 short_code = generate_short_code()
                 code_check = table.query(
-                    IndexName='short-code-index',
+                    IndexName=os.environ['INDEX_SHORTCODE_USERS'],
                     KeyConditionExpression=Key('short_code').eq(short_code)
                 )
                 if not code_check['Items']:

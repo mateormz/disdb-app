@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timedelta
 import os
 from boto3.dynamodb.conditions import Key
+import json
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -29,7 +30,7 @@ def lambda_handler(event, context):
                 'headers': {
                     'Content-Type': 'application/json'
                 },
-                'body': {'error': 'Missing required fields'}
+                'body': json.dumps({'error': 'Missing required fields'})
             }
 
         # Hash the password
@@ -48,7 +49,7 @@ def lambda_handler(event, context):
                 'headers': {
                     'Content-Type': 'application/json'
                 },
-                'body': {'error': 'Invalid credentials'}
+                'body': json.dumps({'error': 'Invalid credentials'})
             }
 
         # Get user data
@@ -75,13 +76,13 @@ def lambda_handler(event, context):
             'headers': {
                 'Content-Type': 'application/json'
             },
-            'body': {
+            'body': json.dumps({
                 'token': token,
                 'expires': expiration,
                 'PK': pk,
                 'SK': sk,
                 'role': role
-            }
+            })
         }
 
     except KeyError as e:
@@ -90,7 +91,7 @@ def lambda_handler(event, context):
             'headers': {
                 'Content-Type': 'application/json'
             },
-            'body': {'error': f'Missing field: {str(e)}'}
+            'body': json.dumps({'error': f'Missing field: {str(e)}'})
         }
     except Exception as e:
         print("Error:", str(e))
@@ -99,5 +100,5 @@ def lambda_handler(event, context):
             'headers': {
                 'Content-Type': 'application/json'
             },
-            'body': {'error': 'Internal Server Error', 'details': str(e)}
+            'body': json.dumps({'error': 'Internal Server Error', 'details': str(e)})
         }

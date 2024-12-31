@@ -4,7 +4,6 @@ import uuid
 from datetime import datetime, timedelta
 import os
 from boto3.dynamodb.conditions import Key
-import json
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -21,24 +20,16 @@ def lambda_handler(event, context):
         user_table = dynamodb.Table(user_table_name)
         token_table = dynamodb.Table(token_table_name)
 
-        # Parse the request body
-        body = event.get('body')
-        if not body:
-            return {
-                "statusCode": 400,
-                "headers": {"Content-Type": "application/json"},
-                "body": {"error": "Request body is missing"}
-            }
-
-        body = json.loads(body)
-        email = body.get('email')
-        password = body.get('password')
+        email = event['body'].get('email')
+        password = event['body'].get('password')
 
         if not all([email, password]):
             return {
-                "statusCode": 400,
-                "headers": {"Content-Type": "application/json"},
-                "body": {"error": "Missing required fields"}
+                'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': {'error': 'Missing required fields'}
             }
 
         # Hash the password
@@ -53,13 +44,16 @@ def lambda_handler(event, context):
         # Validate credentials
         if not response['Items'] or response['Items'][0]['password_hash'] != hashed_password:
             return {
-                "statusCode": 403,
-                "headers": {"Content-Type": "application/json"},
-                "body": {"error": "Invalid credentials"}
+                'statusCode': 403,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': {'error': 'Invalid credentials'}
             }
 
         # Get user data
         user = response['Items'][0]
+
         pk = user['PK']
         sk = user['SK']
         role = user['role']
@@ -77,21 +71,33 @@ def lambda_handler(event, context):
         )
 
         return {
-            "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},
-            "body": {
-                "token": token,
-                "expires": expiration,
-                "PK": pk,
-                "SK": sk,
-                "role": role
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json'
+            },
+            'body': {
+                'token': token,
+                'expires': expiration,
+                'PK': pk,
+                'SK': sk,
+                'role': role
             }
         }
 
+    except KeyError as e:
+        return {
+            'statusCode': 400,
+            'headers': {
+                'Content-Type': 'application/json'
+            },
+            'body': {'error': f'Missing field: {str(e)}'}
+        }
     except Exception as e:
         print("Error:", str(e))
         return {
-            "statusCode": 500,
-            "headers": {"Content-Type": "application/json"},
-            "body": {"error": "Internal Server Error", "details": str(e)}
+            'statusCode': 500,
+            'headers': {
+                'Content-Type': 'application/json'
+            },
+            'body': {'error': 'Internal Server Error', 'details': str(e)}
         }

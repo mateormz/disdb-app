@@ -4,17 +4,13 @@ import uuid
 from datetime import datetime, timedelta
 import os
 from boto3.dynamodb.conditions import Key
-import json
-
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-
 def generate_short_code():
     """Generates the first 8 characters of a UUID."""
     return str(uuid.uuid4())[:8].upper()
-
 
 def lambda_handler(event, context):
     try:
@@ -25,35 +21,34 @@ def lambda_handler(event, context):
         token_table = dynamodb.Table(token_table_name)
 
         # Parse the request body
-        body = event.get('body')
-        if not body:
-            return {
-                "statusCode": 400,
-                "headers": {"Content-Type": "application/json"},
-                "body": {"error": "Request body is missing"}
-            }
-
-        body = json.loads(body)
-        email = body.get('email')
-        password = body.get('password')
-        role = body.get('role')  # 'distributor' or 'delivery_person'
-        name = body.get('name')
-        lastName = body.get('lastName')
-        phoneNumber = body.get('phoneNumber')
+        email = event['body'].get('email')
+        password = event['body'].get('password')
+        role = event['body'].get('role')  # 'distributor' or 'delivery_person'
+        name = event['body'].get('name')
+        lastName = event['body'].get('lastName')
+        phoneNumber = event['body'].get('phoneNumber')
 
         if not all([email, password, role, name, lastName, phoneNumber]):
             return {
-                "statusCode": 400,
-                "headers": {"Content-Type": "application/json"},
-                "body": {"error": "Missing required fields"}
+                'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': {
+                    'error': 'Missing required fields'
+                }
             }
 
         # Validate the role
         if role not in ['distributor', 'delivery_person']:
             return {
-                "statusCode": 400,
-                "headers": {"Content-Type": "application/json"},
-                "body": {"error": "Invalid role. Must be distributor or delivery_person"}
+                'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': {
+                    'error': 'Invalid role. Must be distributor or delivery_person'
+                }
             }
 
         # Check if the email is already registered
@@ -64,9 +59,13 @@ def lambda_handler(event, context):
 
         if response['Items']:
             return {
-                "statusCode": 400,
-                "headers": {"Content-Type": "application/json"},
-                "body": {"error": "The email is already registered"}
+                'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': {
+                    'error': 'The email is already registered'
+                }
             }
 
         # Create the user
@@ -127,21 +126,27 @@ def lambda_handler(event, context):
         )
 
         return {
-            "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},
-            "body": {
-                "token": token,
-                "expires": expiration,
-                "PK": pk,
-                "SK": sk,
-                "role": role
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json'
+            },
+            'body': {
+                'token': token,
+                'expires': expiration,
+                'PK': pk,
+                'SK': sk,
+                'role': role
             }
         }
 
     except Exception as e:
         print("Error:", str(e))
         return {
-            "statusCode": 500,
-            "headers": {"Content-Type": "application/json"},
-            "body": {"error": "Internal Server Error", "details": str(e)}
+            'statusCode': 500,
+            'headers': {
+                'Content-Type': 'application/json'
+            },
+            'body': {
+                'error': 'Internal Server Error', 'details': str(e)
+            }
         }

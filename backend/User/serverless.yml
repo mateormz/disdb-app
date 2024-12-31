@@ -19,7 +19,7 @@ provider:
 
     # Index token
     INDEX_TOKENS: token-index
-
+    
     SERVICE_NAME: disdb-user-api
     STAGE: ${sls:stage}
 
@@ -31,7 +31,7 @@ functions:
           path: /user/register
           method: post
           cors: true
-          integration: lambda-proxy
+          integration: lambda
 
   user_login:
     handler: login.lambda_handler
@@ -40,16 +40,16 @@ functions:
           path: /user/login
           method: post
           cors: true
-          integration: lambda-proxy
+          integration: lambda
 
-  validateToken:
+  disdb_validateToken:
     handler: validateToken.lambda_handler
     events:
       - http:
           path: /token/validate
           method: post
           cors: true
-          integration: lambda-proxy
+          integration: lambda
 
 resources:
   Resources:

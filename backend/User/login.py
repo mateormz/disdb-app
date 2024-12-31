@@ -26,6 +26,9 @@ def lambda_handler(event, context):
         if not all([email, password]):
             return {
                 'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
                 'body': {'error': 'Missing required fields'}
             }
 
@@ -42,6 +45,9 @@ def lambda_handler(event, context):
         if not response['Items'] or response['Items'][0]['password_hash'] != hashed_password:
             return {
                 'statusCode': 403,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
                 'body': {'error': 'Invalid credentials'}
             }
 
@@ -66,6 +72,9 @@ def lambda_handler(event, context):
 
         return {
             'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json'
+            },
             'body': {
                 'token': token,
                 'expires': expiration,
@@ -78,11 +87,17 @@ def lambda_handler(event, context):
     except KeyError as e:
         return {
             'statusCode': 400,
+            'headers': {
+                'Content-Type': 'application/json'
+            },
             'body': {'error': f'Missing field: {str(e)}'}
         }
     except Exception as e:
         print("Error:", str(e))
         return {
             'statusCode': 500,
+            'headers': {
+                'Content-Type': 'application/json'
+            },
             'body': {'error': 'Internal Server Error', 'details': str(e)}
         }

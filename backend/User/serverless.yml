@@ -56,11 +56,11 @@ functions:
           integration: lambda
 
   getUserById:
-    handler: getUser.lambda_handler
+    handler: getUserById.lambda_handler
     events:
       - http:
           path: /user/get
-          method: post
+          method: get
           cors: true
           integration: lambda
 

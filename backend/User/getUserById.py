@@ -1,6 +1,7 @@
 import boto3
 import os
 from boto3.dynamodb.conditions import Key
+import json
 
 def lambda_handler(event, context):
     try:

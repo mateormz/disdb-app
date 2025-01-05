@@ -12,7 +12,7 @@ def lambda_handler(event, context):
 
         # Environment variables
         user_table_name = os.environ['TABLE_USERS']
-        validate_function_name = os.environ['VALIDATE_TOKEN_FUNCTION']
+        validate_function_name = f"{os.environ['SERVICE_NAME']}-{os.environ['STAGE']}-validateToken"
         print("User table name:", user_table_name)
         print("Validate function name:", validate_function_name)
         

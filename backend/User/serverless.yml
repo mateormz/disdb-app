@@ -60,7 +60,7 @@ functions:
     events:
       - http:
           path: /user/get
-          method: post
+          method: get
           cors: true
           integration: lambda
 

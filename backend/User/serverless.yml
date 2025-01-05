@@ -25,7 +25,7 @@ provider:
     STAGE: ${sls:stage}
 
     # Function names
-    VALIDATE_TOKEN_FUNCTION: ${sls:service}-${sls:stage}-validateToken
+    VALIDATE_TOKEN_FUNCTION: ${self:service}-${sls:stage}-validateToken
 
 functions:
   register:

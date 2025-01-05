@@ -20,11 +20,15 @@ provider:
     # Index token
     INDEX_TOKENS: token-index
     
+    # Service info
     SERVICE_NAME: disdb-user-api
     STAGE: ${sls:stage}
 
+    # Function names
+    VALIDATE_TOKEN_FUNCTION: ${sls:service}-${sls:stage}-validateToken
+
 functions:
-  user_register:
+  register:
     handler: register.lambda_handler
     events:
       - http:
@@ -33,7 +37,7 @@ functions:
           cors: true
           integration: lambda
 
-  user_login:
+  login:
     handler: login.lambda_handler
     events:
       - http:
@@ -42,11 +46,20 @@ functions:
           cors: true
           integration: lambda
 
-  disdb_validateToken:
+  validateToken:
     handler: validateToken.lambda_handler
     events:
       - http:
           path: /token/validate
+          method: post
+          cors: true
+          integration: lambda
+
+  getUserById:
+    handler: getUser.lambda_handler
+    events:
+      - http:
+          path: /user/get
           method: post
           cors: true
           integration: lambda

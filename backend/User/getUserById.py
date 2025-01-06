@@ -59,9 +59,8 @@ def lambda_handler(event, context):
             }
 
         # Extract PK and SK from path parameters
-        path_parameters = event.get('path', {})
-        pk = path_parameters.get('PK')
-        sk = path_parameters.get('SK')
+        pk = event['path']['PK']
+        sk = event['path']['SK']
         print("PK:", pk)
         print("SK:", sk)
         if not pk or not sk:

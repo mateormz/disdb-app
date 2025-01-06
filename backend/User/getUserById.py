@@ -58,31 +58,20 @@ def lambda_handler(event, context):
                 'body': {'error': 'Unauthorized - Invalid or expired token'}
             }
 
-        # Extract PK and SK from the request body
-        body = event.get('body')
-        print("Request body:", body)
-        if not body:
-            print("Request body is missing")
-            return {
-                'statusCode': 400,
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
-                'body': {'error': 'Request body is missing'}
-            }
-
-        pk = body.get('PK')
-        sk = body.get('SK')
+        # Extract PK and SK from path parameters
+        path_parameters = event.get('path', {})
+        pk = path_parameters.get('PK')
+        sk = path_parameters.get('SK')
         print("PK:", pk)
         print("SK:", sk)
         if not pk or not sk:
-            print("PK or SK is missing")
+            print("PK or SK is missing in path parameters")
             return {
                 'statusCode': 400,
                 'headers': {
                     'Content-Type': 'application/json'
                 },
-                'body': {'error': 'PK or SK is missing'}
+                'body': {'error': 'PK or SK is missing in path parameters'}
             }
 
         # Query DynamoDB to get the user

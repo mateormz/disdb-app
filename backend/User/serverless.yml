@@ -59,10 +59,9 @@ functions:
     handler: getUserById.lambda_handler
     events:
       - http:
-          path: /user/get
+          path: /user/get/{PK}/{SK}
           method: get
           cors: true
-          integration: lambda
 
 resources:
   Resources:

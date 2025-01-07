@@ -35,7 +35,6 @@ functions:
           path: /user/register
           method: post
           cors: true
-          integration: lambda
 
   login:
     handler: login.lambda_handler
@@ -44,7 +43,6 @@ functions:
           path: /user/login
           method: post
           cors: true
-          integration: lambda
 
   validateToken:
     handler: validateToken.lambda_handler
@@ -53,7 +51,6 @@ functions:
           path: /token/validate
           method: post
           cors: true
-          integration: lambda
 
   getUserById:
     handler: getUserById.lambda_handler

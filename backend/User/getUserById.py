@@ -24,7 +24,7 @@ def lambda_handler(event, context):
                 'headers': {
                     'Content-Type': 'application/json'
                 },
-                'body': json.dumps({'error': f"Missing environment variable: {str(env_error)}"})
+                'body': {'error': f"Missing environment variable: {str(env_error)}"}
             }
         
         user_table = dynamodb.Table(user_table_name)
@@ -39,7 +39,7 @@ def lambda_handler(event, context):
                 'headers': {
                     'Content-Type': 'application/json'
                 },
-                'body': json.dumps({'error': 'Authorization token is missing'})
+                'body': {'error': 'Authorization token is missing'}
             }
 
         # Invoke validateToken function
@@ -54,7 +54,7 @@ def lambda_handler(event, context):
         validate_response = lambda_client.invoke(
             FunctionName=validate_function_name,
             InvocationType='RequestResponse',
-            Payload=json.dumps(payload)
+            Payload=json.dumps(payload)  # Aquí se mantiene json.dumps
         )
         validation_result = json.loads(validate_response['Payload'].read())
         print("[INFO] Validation function response received")
@@ -67,7 +67,7 @@ def lambda_handler(event, context):
                 'headers': {
                     'Content-Type': 'application/json'
                 },
-                'body': json.dumps({'error': 'Unauthorized - Invalid or expired token'})
+                'body': {'error': 'Unauthorized - Invalid or expired token'}
             }
 
         # Extract PK and SK from path parameters
@@ -82,7 +82,7 @@ def lambda_handler(event, context):
                 'headers': {
                     'Content-Type': 'application/json'
                 },
-                'body': json.dumps({'error': f'Missing path parameter: {str(path_error)}'})
+                'body': {'error': f'Missing path parameter: {str(path_error)}'}
             }
 
         # Query DynamoDB to get the user
@@ -102,7 +102,7 @@ def lambda_handler(event, context):
                 'headers': {
                     'Content-Type': 'application/json'
                 },
-                'body': json.dumps({'error': 'User not found'})
+                'body': {'error': 'User not found'}
             }
 
         user = response['Item']
@@ -119,7 +119,7 @@ def lambda_handler(event, context):
             'headers': {
                 'Content-Type': 'application/json'
             },
-            'body': json.dumps({'user': user})
+            'body': {'user': user}
         }
 
     except KeyError as e:
@@ -127,9 +127,9 @@ def lambda_handler(event, context):
         return {
             'statusCode': 400,
             'headers': {
-                'Content-Type': 'application/json'
+                    'Content-Type': 'application/json'
             },
-            'body': json.dumps({'error': f'Missing field: {str(e)}'})
+            'body': {'error': f'Missing field: {str(e)}'}
         }
     except Exception as e:
         print(f"[ERROR] Unexpected error: {str(e)}")
@@ -138,5 +138,5 @@ def lambda_handler(event, context):
             'headers': {
                 'Content-Type': 'application/json'
             },
-            'body': json.dumps({'error': 'Internal Server Error', 'details': str(e)})
+            'body': {'error': 'Internal Server Error', 'details': str(e)}
         }

@@ -119,7 +119,7 @@ def lambda_handler(event, context):
             'headers': {
                 'Content-Type': 'application/json'
             },
-            'body': {'user': user}
+            'body': user
         }
 
     except KeyError as e:

@@ -41,7 +41,19 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': 'Request body is missing'})
             }
 
-        token = event['body'].get('token')
+        try:
+            body = json.loads(event['body'])  # Convert the string body to a Python dictionary
+        except json.JSONDecodeError as e:
+            print(f"[ERROR] Failed to parse JSON body: {str(e)}")
+            return {
+                'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': json.dumps({'error': 'Invalid JSON in request body'})
+            }
+
+        token = body.get('token')
         print(f"[DEBUG] Token received: {token}")
 
         if not token:

@@ -45,12 +45,34 @@ def lambda_handler(event, context):
         token_table = dynamodb.Table(token_table_name)
 
         # Parse request body
-        email = event['body'].get('email')
-        password = event['body'].get('password')
-        role = event['body'].get('role')  # 'distributor' or 'delivery_person'
-        name = event['body'].get('name')
-        lastName = event['body'].get('lastName')
-        phoneNumber = event['body'].get('phoneNumber')
+        if 'body' not in event or not event['body']:
+            print("[WARNING] Request body is missing")
+            return {
+                'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': json.dumps({'error': 'Request body is missing'})
+            }
+
+        try:
+            body = json.loads(event['body'])
+        except json.JSONDecodeError as e:
+            print(f"[ERROR] Failed to parse JSON body: {str(e)}")
+            return {
+                'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': json.dumps({'error': 'Invalid JSON in request body'})
+            }
+
+        email = body.get('email')
+        password = body.get('password')
+        role = body.get('role')  # 'distributor' or 'delivery_person'
+        name = body.get('name')
+        lastName = body.get('lastName')
+        phoneNumber = body.get('phoneNumber')
 
         print(f"[DEBUG] Parsed email: {email}")
         print(f"[DEBUG] Parsed password: {password}")

@@ -24,7 +24,7 @@ def lambda_handler(event, context):
                 'headers': {
                     'Content-Type': 'application/json'
                 },
-                'body': {'error': f"Missing environment variable: {str(env_error)}"}
+                'body': json.dumps({'error': f"Missing environment variable: {str(env_error)}"})
             }
         
         user_table = dynamodb.Table(user_table_name)
@@ -39,7 +39,7 @@ def lambda_handler(event, context):
                 'headers': {
                     'Content-Type': 'application/json'
                 },
-                'body': {'error': 'Authorization token is missing'}
+                'body': json.dumps({'error': 'Authorization token is missing'})
             }
 
         # Invoke validateToken function
@@ -67,7 +67,7 @@ def lambda_handler(event, context):
                 'headers': {
                     'Content-Type': 'application/json'
                 },
-                'body': {'error': 'Unauthorized - Invalid or expired token'}
+                'body': json.dumps({'error': 'Unauthorized - Invalid or expired token'})
             }
 
         # Extract PK and SK from path parameters
@@ -82,7 +82,7 @@ def lambda_handler(event, context):
                 'headers': {
                     'Content-Type': 'application/json'
                 },
-                'body': {'error': f'Missing path parameter: {str(path_error)}'}
+                'body': json.dumps({'error': f'Missing path parameter: {str(path_error)}'})
             }
 
         # Query DynamoDB to get the user
@@ -102,7 +102,7 @@ def lambda_handler(event, context):
                 'headers': {
                     'Content-Type': 'application/json'
                 },
-                'body': {'error': 'User not found'}
+                'body': json.dumps({'error': 'User not found'})
             }
 
         user = response['Item']
@@ -113,48 +113,13 @@ def lambda_handler(event, context):
             print("[DEBUG] Removing sensitive information (password_hash) from user data")
             user.pop('password_hash', None)
 
-        # Intentar retornar al cliente
         print("[INFO] Returning successful response")
-        try:
-            # Intentar serializar el usuario
-            print("[DEBUG] Checking if user is serializable")
-            json.dumps(user)
-        except TypeError as serialization_error:
-            # Capturar errores de serialización y registrar los detalles
-            print(f"[ERROR] Serialization error: {str(serialization_error)}")
-            print("[DEBUG] Problematic user data:", user)
-            return {
-                'statusCode': 500,
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
-                'body': {
-                    'error': 'Serialization Error',
-                    'details': str(serialization_error)
-                }
-            }
-        except Exception as unexpected_error:
-            # Capturar errores inesperados
-            print(f"[ERROR] Unexpected error during serialization: {str(unexpected_error)}")
-            return {
-                'statusCode': 500,
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
-                'body': {
-                    'error': 'Unexpected Error',
-                    'details': str(unexpected_error)
-                }
-            }
-
-        # Si el objeto es serializable, continuar
-        print("[INFO] User is serializable, returning response")
         return {
             'statusCode': 200,
             'headers': {
                 'Content-Type': 'application/json'
             },
-            'body': user
+            'body': json.dumps(user)
         }
 
     except KeyError as e:
@@ -162,9 +127,9 @@ def lambda_handler(event, context):
         return {
             'statusCode': 400,
             'headers': {
-                    'Content-Type': 'application/json'
+                'Content-Type': 'application/json'
             },
-            'body': {'error': f'Missing field: {str(e)}'}
+            'body': json.dumps({'error': f'Missing field: {str(e)}'})
         }
     except Exception as e:
         print(f"[ERROR] Unexpected error: {str(e)}")
@@ -173,5 +138,5 @@ def lambda_handler(event, context):
             'headers': {
                 'Content-Type': 'application/json'
             },
-            'body': {'error': 'Internal Server Error', 'details': str(e)}
+            'body': json.dumps({'error': 'Internal Server Error', 'details': str(e)})
         }

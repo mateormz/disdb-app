@@ -120,8 +120,9 @@ def lambda_handler(event, context):
             print("[DEBUG] Checking if user is serializable")
             json.dumps(user)
         except TypeError as serialization_error:
-            # Capturar errores de serialización
+            # Capturar errores de serialización y registrar los detalles
             print(f"[ERROR] Serialization error: {str(serialization_error)}")
+            print("[DEBUG] Problematic user data:", user)
             return {
                 'statusCode': 500,
                 'headers': {
@@ -132,8 +133,22 @@ def lambda_handler(event, context):
                     'details': str(serialization_error)
                 }
             }
+        except Exception as unexpected_error:
+            # Capturar errores inesperados
+            print(f"[ERROR] Unexpected error during serialization: {str(unexpected_error)}")
+            return {
+                'statusCode': 500,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': {
+                    'error': 'Unexpected Error',
+                    'details': str(unexpected_error)
+                }
+            }
 
-        # Si es serializable, devolver la respuesta
+        # Si el objeto es serializable, continuar
+        print("[INFO] User is serializable, returning response")
         return {
             'statusCode': 200,
             'headers': {
@@ -141,7 +156,6 @@ def lambda_handler(event, context):
             },
             'body': user
         }
-
 
     except KeyError as e:
         print(f"[ERROR] KeyError encountered: {str(e)}")

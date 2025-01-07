@@ -39,8 +39,8 @@ def lambda_handler(event, context):
         token_table = dynamodb.Table(token_table_name)
 
         # Parse request body
-        email = event.get('body', {}).get('email')
-        password = event.get('body', {}).get('password')
+        email = event['body'].get('email')
+        password = event['body'].get('password')
         print(f"[DEBUG] Email: {email}, Password: {'*' * len(password) if password else None}")
 
         if not all([email, password]):

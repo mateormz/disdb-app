@@ -41,8 +41,7 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': 'Request body is missing'})
             }
 
-        body = event['body']
-        token = body.get('token')
+        token = event['body'].get('token')
         print(f"[DEBUG] Token received: {token}")
 
         if not token:

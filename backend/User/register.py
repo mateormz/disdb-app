@@ -45,14 +45,19 @@ def lambda_handler(event, context):
         token_table = dynamodb.Table(token_table_name)
 
         # Parse request body
-        body = event.get('body', {})
-        email = body.get('email')
-        password = body.get('password')
-        role = body.get('role')  # 'distributor' or 'delivery_person'
-        name = body.get('name')
-        lastName = body.get('lastName')
-        phoneNumber = body.get('phoneNumber')
-        print(f"[DEBUG] Parsed body: {body}")
+        email = event['body'].get('email')
+        password = event['body'].get('password')
+        role = event['body'].get('role')  # 'distributor' or 'delivery_person'
+        name = event['body'].get('name')
+        lastName = event['body'].get('lastName')
+        phoneNumber = event['body'].get('phoneNumber')
+
+        print(f"[DEBUG] Parsed email: {email}")
+        print(f"[DEBUG] Parsed password: {password}")
+        print(f"[DEBUG] Parsed role: {role}")
+        print(f"[DEBUG] Parsed name: {name}")
+        print(f"[DEBUG] Parsed lastName: {lastName}")
+        print(f"[DEBUG] Parsed phoneNumber: {phoneNumber}")
 
         if not all([email, password, role, name, lastName, phoneNumber]):
             print("[WARNING] Missing required fields")

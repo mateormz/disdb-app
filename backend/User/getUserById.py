@@ -113,7 +113,27 @@ def lambda_handler(event, context):
             print("[DEBUG] Removing sensitive information (password_hash) from user data")
             user.pop('password_hash', None)
 
+        # Intentar retornar al cliente
         print("[INFO] Returning successful response")
+        try:
+            # Intentar serializar el usuario
+            print("[DEBUG] Checking if user is serializable")
+            json.dumps(user)
+        except TypeError as serialization_error:
+            # Capturar errores de serialización
+            print(f"[ERROR] Serialization error: {str(serialization_error)}")
+            return {
+                'statusCode': 500,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': {
+                    'error': 'Serialization Error',
+                    'details': str(serialization_error)
+                }
+            }
+
+        # Si es serializable, devolver la respuesta
         return {
             'statusCode': 200,
             'headers': {
@@ -121,6 +141,7 @@ def lambda_handler(event, context):
             },
             'body': user
         }
+
 
     except KeyError as e:
         print(f"[ERROR] KeyError encountered: {str(e)}")

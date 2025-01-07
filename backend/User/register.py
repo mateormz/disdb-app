@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timedelta
 import os
 from boto3.dynamodb.conditions import Key
+import json
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -14,72 +15,98 @@ def generate_short_code():
 
 def lambda_handler(event, context):
     try:
+        print("[INFO] Received event:", json.dumps(event, indent=2))
+
+        # Initialize DynamoDB
         dynamodb = boto3.resource('dynamodb')
-        user_table_name = os.environ['TABLE_USERS']
-        token_table_name = os.environ['TABLE_TOKENS']
+
+        # Environment variables
+        try:
+            user_table_name = os.environ['TABLE_USERS']
+            token_table_name = os.environ['TABLE_TOKENS']
+            email_index = os.environ['INDEX_EMAIL_USERS']
+            short_code_index = os.environ['INDEX_SHORTCODE_USERS']
+            print("[INFO] Environment variables loaded successfully")
+            print(f"[DEBUG] User table name: {user_table_name}")
+            print(f"[DEBUG] Token table name: {token_table_name}")
+            print(f"[DEBUG] Email index: {email_index}")
+            print(f"[DEBUG] Short code index: {short_code_index}")
+        except KeyError as env_error:
+            print(f"[ERROR] Missing environment variable: {str(env_error)}")
+            return {
+                'statusCode': 500,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': json.dumps({'error': f"Missing environment variable: {str(env_error)}"})
+            }
+
         user_table = dynamodb.Table(user_table_name)
         token_table = dynamodb.Table(token_table_name)
 
-        # Parse the request body
-        email = event['body'].get('email')
-        password = event['body'].get('password')
-        role = event['body'].get('role')  # 'distributor' or 'delivery_person'
-        name = event['body'].get('name')
-        lastName = event['body'].get('lastName')
-        phoneNumber = event['body'].get('phoneNumber')
+        # Parse request body
+        body = event.get('body', {})
+        email = body.get('email')
+        password = body.get('password')
+        role = body.get('role')  # 'distributor' or 'delivery_person'
+        name = body.get('name')
+        lastName = body.get('lastName')
+        phoneNumber = body.get('phoneNumber')
+        print(f"[DEBUG] Parsed body: {body}")
 
         if not all([email, password, role, name, lastName, phoneNumber]):
+            print("[WARNING] Missing required fields")
             return {
                 'statusCode': 400,
                 'headers': {
                     'Content-Type': 'application/json'
                 },
-                'body': {
-                    'error': 'Missing required fields'
-                }
+                'body': json.dumps({'error': 'Missing required fields'})
             }
 
         # Validate the role
         if role not in ['distributor', 'delivery_person']:
+            print("[WARNING] Invalid role provided")
             return {
                 'statusCode': 400,
                 'headers': {
                     'Content-Type': 'application/json'
                 },
-                'body': {
-                    'error': 'Invalid role. Must be distributor or delivery_person'
-                }
+                'body': json.dumps({'error': 'Invalid role. Must be distributor or delivery_person'})
             }
 
         # Check if the email is already registered
+        print(f"[INFO] Checking if email is already registered: {email}")
         response = user_table.query(
-            IndexName=os.environ['INDEX_EMAIL_USERS'],
+            IndexName=email_index,
             KeyConditionExpression=Key('email').eq(email)
         )
+        print(f"[DEBUG] Email query response: {response}")
 
         if response['Items']:
+            print("[WARNING] Email is already registered")
             return {
                 'statusCode': 400,
                 'headers': {
                     'Content-Type': 'application/json'
                 },
-                'body': {
-                    'error': 'The email is already registered'
-                }
+                'body': json.dumps({'error': 'The email is already registered'})
             }
 
         # Create the user
         user_id = str(uuid.uuid4())
         if role == 'distributor':
             # Generate a unique short code
+            print("[INFO] Generating unique short code")
             while True:
                 short_code = generate_short_code()
                 code_check = user_table.query(
-                    IndexName=os.environ['INDEX_SHORTCODE_USERS'],
+                    IndexName=short_code_index,
                     KeyConditionExpression=Key('short_code').eq(short_code)
                 )
                 if not code_check['Items']:
                     break
+            print(f"[DEBUG] Generated short code: {short_code}")
 
             pk = user_id
             sk = 'metadata'
@@ -110,14 +137,15 @@ def lambda_handler(event, context):
                 'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
 
-        # Save the user to DynamoDB
+        print(f"[INFO] Saving user to DynamoDB: {item}")
         user_table.put_item(Item=item)
 
         # Create a token
         token = str(uuid.uuid4())
         expiration = (datetime.now() + timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')
+        print(f"[INFO] Token generated: {token}, Expiration: {expiration}")
 
-        # Store the token in the tokens table
+        print("[INFO] Storing token in DynamoDB")
         token_table.put_item(
             Item={
                 'token': token,
@@ -125,28 +153,27 @@ def lambda_handler(event, context):
             }
         )
 
+        print("[INFO] Returning successful response")
         return {
             'statusCode': 200,
             'headers': {
                 'Content-Type': 'application/json'
             },
-            'body': {
+            'body': json.dumps({
                 'token': token,
                 'expires': expiration,
                 'PK': pk,
                 'SK': sk,
                 'role': role
-            }
+            })
         }
 
     except Exception as e:
-        print("Error:", str(e))
+        print(f"[ERROR] Unexpected error: {str(e)}")
         return {
             'statusCode': 500,
             'headers': {
                 'Content-Type': 'application/json'
             },
-            'body': {
-                'error': 'Internal Server Error', 'details': str(e)
-            }
+            'body': json.dumps({'error': 'Internal Server Error', 'details': str(e)})
         }

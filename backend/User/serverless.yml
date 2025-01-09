@@ -60,6 +60,22 @@ functions:
           method: get
           cors: true
 
+  updateUser:
+    handler: updateUser.lambda_handler
+    events:
+      - http:
+          path: /user/update/{PK}/{SK}
+          method: put
+          cors: true
+
+  deleteUser:
+    handler: deleteUser.lambda_handler
+    events:
+      - http:
+          path: /user/delete/{PK}/{SK}
+          method: delete
+          cors: true
+
 resources:
   Resources:
     DisdbUsersTable:

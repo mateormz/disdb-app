@@ -106,9 +106,9 @@ def lambda_handler(event, context):
             }
 
         # Prepare the update expression
-        update_expression = "SET " + ", ".join(f"#{k} = :{k}" for k in updates.keys())
-        expression_attribute_names = {f"#{k}": k for k in updates.keys()}
-        expression_attribute_values = {f":{k}": v for k, v in updates.items()}
+        update_expression = "SET " + ", ".join(f"#{k} = :{k}" for k in body.keys())
+        expression_attribute_names = {f"#{k}": k for k in body.keys()}
+        expression_attribute_values = {f":{k}": v for k, v in body.items()}
 
         # Update item in DynamoDB
         print("[INFO] Updating user in DynamoDB")

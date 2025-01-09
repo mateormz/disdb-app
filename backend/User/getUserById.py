@@ -45,16 +45,14 @@ def lambda_handler(event, context):
         # Invoke validateToken function
         lambda_client = boto3.client('lambda')
         payload = {
-            "body": {
-                "token": token
-            }
+            "body": json.dumps({"token": token})
         }
         print("[INFO] Invoking validateToken function with payload:", json.dumps(payload))
         
         validate_response = lambda_client.invoke(
             FunctionName=validate_function_name,
             InvocationType='RequestResponse',
-            Payload=json.dumps(payload)  # Aquí se mantiene json.dumps
+            Payload=json.dumps(payload)
         )
         validation_result = json.loads(validate_response['Payload'].read())
         print("[INFO] Validation function response received")

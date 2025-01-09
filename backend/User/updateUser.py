@@ -81,18 +81,28 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': f'Missing path parameter: {str(path_error)}'})
             }
 
-        # Parse body for updates
-        body = json.loads(event['body'])
-        updates = body.get('updates')
-        print(f"[DEBUG] Updates received: {updates}")
-        if not updates:
-            print("[WARNING] No updates provided")
+        # Parse body
+        try:
+            body = json.loads(event.get('body', '{}'))
+            print(f"[DEBUG] Body parsed: {body}")
+        except json.JSONDecodeError as decode_error:
+            print(f"[ERROR] Failed to parse body: {str(decode_error)}")
             return {
                 'statusCode': 400,
                 'headers': {
                     'Content-Type': 'application/json'
                 },
-                'body': json.dumps({'error': 'No updates provided'})
+                'body': json.dumps({'error': 'Invalid JSON in request body'})
+            }
+
+        if not body:
+            print("[WARNING] Request body is empty")
+            return {
+                'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': json.dumps({'error': 'Request body is missing'})
             }
 
         # Prepare the update expression

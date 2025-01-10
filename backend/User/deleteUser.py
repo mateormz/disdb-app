@@ -41,15 +41,35 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': f'Missing path parameter: {str(path_error)}'})
             }
 
-        # Delete user from DynamoDB
-        print(f"[INFO] Deleting user from DynamoDB with PK={pk} and SK={sk}")
-        response = user_table.delete_item(
+        # Check if the user exists in DynamoDB
+        print(f"[INFO] Checking if user exists with PK={pk} and SK={sk}")
+        get_response = user_table.get_item(
             Key={
                 'PK': pk,
                 'SK': sk
             }
         )
-        print(f"[DEBUG] DynamoDB delete_item response: {response}")
+        print(f"[DEBUG] DynamoDB get_item response: {get_response}")
+
+        if 'Item' not in get_response:
+            print("[WARNING] User does not exist")
+            return {
+                'statusCode': 404,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': json.dumps({'error': 'User not found'})
+            }
+
+        # User exists, proceed with deletion
+        print(f"[INFO] Deleting user from DynamoDB with PK={pk} and SK={sk}")
+        delete_response = user_table.delete_item(
+            Key={
+                'PK': pk,
+                'SK': sk
+            }
+        )
+        print(f"[DEBUG] DynamoDB delete_item response: {delete_response}")
 
         # Return success response
         return {

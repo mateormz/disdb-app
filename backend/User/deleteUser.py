@@ -42,13 +42,9 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': 'Authorization token is missing'})
             }
 
-        # Invoke validateToken function
+        # Validate token
         lambda_client = boto3.client('lambda')
-        payload = {
-            "body": {
-                "token": token
-            }
-        }
+        payload = {"body": json.dumps({"token": token})}
         print("[INFO] Invoking validateToken function with payload:", json.dumps(payload))
 
         validate_response = lambda_client.invoke(

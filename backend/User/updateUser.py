@@ -81,6 +81,21 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': f'Missing path parameter: {str(path_error)}'})
             }
 
+        # Check if user exists in DynamoDB
+        print(f"[INFO] Checking if user exists with PK={pk} and SK={sk}")
+        user_check = user_table.get_item(Key={'PK': pk, 'SK': sk})
+        print(f"[DEBUG] DynamoDB get_item response: {user_check}")
+
+        if 'Item' not in user_check:
+            print("[WARNING] User not found in DynamoDB")
+            return {
+                'statusCode': 404,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': json.dumps({'error': 'User not found'})
+            }
+
         # Parse body
         try:
             body = json.loads(event.get('body', '{}'))

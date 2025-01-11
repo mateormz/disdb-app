@@ -132,7 +132,8 @@ def lambda_handler(event, context):
         token_table.put_item(
             Item={
                 'token': token,
-                'expiration': expiration
+                'expiration': expiration,
+                'role': 'distributor'
             }
         )
 

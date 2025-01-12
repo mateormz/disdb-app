@@ -76,6 +76,14 @@ functions:
           method: delete
           cors: true
 
+  createDeliveryPerson:
+    handler: createDeliveryPerson.lambda_handler
+    events:
+      - http:
+          path: /user/create-delivery-person
+          method: post
+          cors: true
+
 resources:
   Resources:
     DisdbUsersTable:

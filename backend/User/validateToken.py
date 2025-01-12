@@ -115,7 +115,6 @@ def lambda_handler(event, context):
                 'role': role,
                 'pk': pk,
                 'sk': sk
-
             })
         }
 

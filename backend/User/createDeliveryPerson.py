@@ -108,15 +108,33 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': 'Missing required fields'})
             }
 
+        # Verify that the PK corresponds to an existing distributor
+        print(f"[INFO] Verifying if PK={pk} corresponds to a distributor")
+        distributor_response = user_table.get_item(
+            Key={
+                'PK': pk,
+                'SK': 'metadata'
+            }
+        )
+        print(f"[DEBUG] Distributor query response: {distributor_response}")
+
+        if 'Item' not in distributor_response or distributor_response['Item'].get('role') != 'distributor':
+            print("[WARNING] The provided PK does not belong to a valid distributor")
+            return {
+                'statusCode': 400,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({'error': 'Invalid PK - No distributor found with the provided PK'})
+            }
+
         # Check if the email is already registered
         print(f"[INFO] Checking if email is already registered: {email}")
-        response = user_table.query(
+        email_response = user_table.query(
             IndexName=email_index,
             KeyConditionExpression=Key('email').eq(email)
         )
-        print(f"[DEBUG] Email query response: {response}")
+        print(f"[DEBUG] Email query response: {email_response}")
 
-        if response['Items']:
+        if email_response['Items']:
             print("[WARNING] Email is already registered")
             return {
                 'statusCode': 400,

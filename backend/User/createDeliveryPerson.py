@@ -96,8 +96,9 @@ def lambda_handler(event, context):
         phoneNumber = body.get('phoneNumber')
         email = body.get('email')
         password = body.get('password')
+        dni = body.get('dni')
 
-        if not all([pk, name, lastName, phoneNumber, email, password]):
+        if not all([pk, name, lastName, phoneNumber, email, password, dni]):
             print("[WARNING] Missing required fields")
             return {
                 'statusCode': 400,
@@ -118,6 +119,7 @@ def lambda_handler(event, context):
             'name': name,
             'lastName': lastName,
             'phoneNumber': phoneNumber,
+            'dni': dni,
             'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
 

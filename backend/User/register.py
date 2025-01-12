@@ -133,7 +133,9 @@ def lambda_handler(event, context):
             Item={
                 'token': token,
                 'expiration': expiration,
-                'role': 'distributor'
+                'role': 'distributor',
+                'pk': pk,
+                'sk': sk
             }
         )
 

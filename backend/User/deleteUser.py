@@ -15,8 +15,6 @@ def lambda_handler(event, context):
             user_table_name = os.environ['TABLE_USERS']
             validate_function_name = f"{os.environ['SERVICE_NAME']}-{os.environ['STAGE']}-{os.environ['VALIDATE_TOKEN_FUNCTION']}"
             print("[INFO] Environment variables loaded successfully")
-            print(f"[DEBUG] User table name: {user_table_name}")
-            print(f"[DEBUG] Validate function name: {validate_function_name}")
         except KeyError as env_error:
             print(f"[ERROR] Missing environment variable: {str(env_error)}")
             return {
@@ -66,6 +64,11 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': 'Unauthorized - Invalid or expired token'})
             }
 
+        # Extract role from validation result
+        user_info = json.loads(validation_result.get('body', '{}'))
+        role = user_info.get('role')
+        print(f"[INFO] User role retrieved: {role}")
+
         # Extract PK and SK from path parameters
         try:
             pk = event['pathParameters']['PK']
@@ -101,23 +104,53 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': 'User not found'})
             }
 
-        # User exists, proceed with deletion
-        print(f"[INFO] Deleting user from DynamoDB with PK={pk} and SK={sk}")
-        delete_response = user_table.delete_item(
-            Key={
-                'PK': pk,
-                'SK': sk
-            }
-        )
-        print(f"[DEBUG] DynamoDB delete_item response: {delete_response}")
+        user_to_delete = get_response['Item']
+        user_role = user_to_delete.get('role')
+        print(f"[INFO] Role of user to delete: {user_role}")
 
-        # Return success response
+        if user_role == 'distributor':
+            # Delete all users with the same PK (distributor and associated delivery persons)
+            print("[INFO] Deleting distributor and all associated delivery persons")
+            query_response = user_table.query(
+                KeyConditionExpression=Key('PK').eq(pk)
+            )
+            print(f"[DEBUG] Query response for associated users: {query_response}")
+
+            with user_table.batch_writer() as batch:
+                for item in query_response['Items']:
+                    print(f"[INFO] Deleting item with PK={item['PK']} and SK={item['SK']}")
+                    batch.delete_item(
+                        Key={
+                            'PK': item['PK'],
+                            'SK': item['SK']
+                        }
+                    )
+        elif user_role == 'delivery_person':
+            # Delete only the specific delivery person
+            print("[INFO] Deleting delivery person")
+            user_table.delete_item(
+                Key={
+                    'PK': pk,
+                    'SK': sk
+                }
+            )
+        else:
+            print("[WARNING] Unsupported role for deletion")
+            return {
+                'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': json.dumps({'error': 'Unsupported role for deletion'})
+            }
+
+        print("[INFO] User deletion successful")
         return {
             'statusCode': 200,
             'headers': {
                 'Content-Type': 'application/json'
             },
-            'body': json.dumps({'message': 'User deleted successfully'})
+            'body': json.dumps({'message': 'User and associated accounts deleted successfully' if user_role == 'distributor' else 'User deleted successfully'})
         }
 
     except Exception as e:
@@ -125,7 +158,7 @@ def lambda_handler(event, context):
         return {
             'statusCode': 500,
             'headers': {
-                'Content-Type': 'application/json'
-            },
+                    'Content-Type': 'application/json'
+                },
             'body': json.dumps({'error': 'Internal Server Error', 'details': str(e)})
         }

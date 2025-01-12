@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 import hashlib
 import json
+from boto3.dynamodb.conditions import Key
 
 def lambda_handler(event, context):
     try:
@@ -14,6 +15,7 @@ def lambda_handler(event, context):
         # Environment variables
         try:
             user_table_name = os.environ['TABLE_USERS']
+            email_index = os.environ['INDEX_EMAIL_USERS']
             validate_function_name = f"{os.environ['SERVICE_NAME']}-{os.environ['STAGE']}-{os.environ['VALIDATE_TOKEN_FUNCTION']}"
             print("[INFO] Environment variables loaded successfully")
         except KeyError as env_error:
@@ -104,6 +106,22 @@ def lambda_handler(event, context):
                 'statusCode': 400,
                 'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({'error': 'Missing required fields'})
+            }
+
+        # Check if the email is already registered
+        print(f"[INFO] Checking if email is already registered: {email}")
+        response = user_table.query(
+            IndexName=email_index,
+            KeyConditionExpression=Key('email').eq(email)
+        )
+        print(f"[DEBUG] Email query response: {response}")
+
+        if response['Items']:
+            print("[WARNING] Email is already registered")
+            return {
+                'statusCode': 400,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({'error': 'The email is already registered'})
             }
 
         # Create the delivery person

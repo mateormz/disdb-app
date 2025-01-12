@@ -100,6 +100,8 @@ def lambda_handler(event, context):
             }
 
         print("[INFO] Token is valid")
+
+        role = token_data['role']
         return {
             'statusCode': 200,
             'headers': {
@@ -107,7 +109,8 @@ def lambda_handler(event, context):
             },
             'body': json.dumps({
                 'message': 'Token is valid',
-                'expiration': expiration
+                'expiration': expiration,
+                'role': role
             })
         }
 

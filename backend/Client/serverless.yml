@@ -1,0 +1,50 @@
+org: ${env:SLS_ORG}
+service: disdb-client-api
+
+provider:
+  name: aws
+  runtime: python3.9
+  iam:
+    role: ${env:AWS_ROLE_ARN}
+  memorySize: 1024
+  timeout: 29
+  environment:
+    # Tables
+    TABLE_CLIENTS: ${sls:stage}-disdb-client-table
+    TABLE_USERS: ${sls:stage}-disdb-user-table
+
+    # Service info
+    SERVICE_NAME: disdb-client-api
+    STAGE: ${sls:stage}
+
+    # Function names
+    VALIDATE_TOKEN_FUNCTION: validateToken
+
+functions:
+  createClient:
+    handler: createClient.lambda_handler
+    events:
+      - http:
+          path: /client/create
+          method: post
+          cors: true
+
+resources:
+  Resources:
+    DisdbClientsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.TABLE_CLIENTS}
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true

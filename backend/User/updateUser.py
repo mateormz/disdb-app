@@ -15,8 +15,6 @@ def lambda_handler(event, context):
             user_table_name = os.environ['TABLE_USERS']
             validate_function_name = f"{os.environ['SERVICE_NAME']}-{os.environ['STAGE']}-{os.environ['VALIDATE_TOKEN_FUNCTION']}"
             print("[INFO] Environment variables loaded successfully")
-            print(f"[DEBUG] User table name: {user_table_name}")
-            print(f"[DEBUG] Validate function name: {validate_function_name}")
         except KeyError as env_error:
             print(f"[ERROR] Missing environment variable: {str(env_error)}")
             return {
@@ -66,7 +64,13 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': 'Unauthorized - Invalid or expired token'})
             }
 
-        # Parse path parameters
+        # Extract authenticated user information
+        user_info = json.loads(validation_result.get('body', '{}'))
+        authenticated_pk = user_info.get('PK')
+        authenticated_sk = user_info.get('SK')
+        print(f"[INFO] Authenticated user PK: {authenticated_pk}, SK: {authenticated_sk}")
+
+        # Extract PK and SK from path parameters
         try:
             pk = event['pathParameters']['PK']
             sk = event['pathParameters']['SK']
@@ -79,6 +83,17 @@ def lambda_handler(event, context):
                     'Content-Type': 'application/json'
                 },
                 'body': json.dumps({'error': f'Missing path parameter: {str(path_error)}'})
+            }
+
+        # Ensure the authenticated user is authorized to update the resource
+        if pk != authenticated_pk or sk != authenticated_sk:
+            print("[WARNING] User is attempting to update unauthorized resources")
+            return {
+                'statusCode': 403,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': json.dumps({'error': 'Unauthorized - You can only update your own resources'})
             }
 
         # Check if user exists in DynamoDB

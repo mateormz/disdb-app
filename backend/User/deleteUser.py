@@ -7,7 +7,6 @@ def lambda_handler(event, context):
     try:
         print("[INFO] Received event:", json.dumps(event, indent=2))
 
-        # Initialize DynamoDB
         dynamodb = boto3.resource('dynamodb')
 
         # Environment variables
@@ -64,10 +63,11 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': 'Unauthorized - Invalid or expired token'})
             }
 
-        # Extract role from validation result
+        # Extract authenticated user information
         user_info = json.loads(validation_result.get('body', '{}'))
-        role = user_info.get('role')
-        print(f"[INFO] User role retrieved: {role}")
+        authenticated_pk = user_info.get('PK')
+        authenticated_sk = user_info.get('SK')
+        print(f"[INFO] Authenticated user PK: {authenticated_pk}, SK: {authenticated_sk}")
 
         # Extract PK and SK from path parameters
         try:
@@ -82,6 +82,17 @@ def lambda_handler(event, context):
                     'Content-Type': 'application/json'
                 },
                 'body': json.dumps({'error': f'Missing path parameter: {str(path_error)}'})
+            }
+
+        # Ensure the authenticated user is authorized to delete the resource
+        if pk != authenticated_pk or sk != authenticated_sk:
+            print("[WARNING] User is attempting to access unauthorized resources")
+            return {
+                'statusCode': 403,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': json.dumps({'error': 'Unauthorized - You can only delete your own resources'})
             }
 
         # Check if the user exists in DynamoDB

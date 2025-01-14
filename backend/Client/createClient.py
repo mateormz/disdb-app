@@ -1,10 +1,8 @@
 import boto3
 import uuid
 import os
-from datetime import datetime
-import hashlib
 import json
-from boto3.dynamodb.conditions import Key
+from datetime import datetime
 
 def lambda_handler(event, context):
     try:
@@ -14,8 +12,8 @@ def lambda_handler(event, context):
 
         # Environment variables
         try:
+            client_table_name = os.environ['TABLE_CLIENTS']
             user_table_name = os.environ['TABLE_USERS']
-            email_index = os.environ['INDEX_EMAIL_USERS']
             validate_function_name = f"{os.environ['SERVICE_NAME']}-{os.environ['STAGE']}-{os.environ['VALIDATE_TOKEN_FUNCTION']}"
             print("[INFO] Environment variables loaded successfully")
         except KeyError as env_error:
@@ -26,6 +24,7 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': f"Missing environment variable: {str(env_error)}"})
             }
 
+        client_table = dynamodb.Table(client_table_name)
         user_table = dynamodb.Table(user_table_name)
 
         # Extract Authorization token
@@ -39,7 +38,7 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': 'Authorization token is missing'})
             }
 
-        # Invoke validateToken function
+        # Validate token
         lambda_client = boto3.client('lambda')
         payload = {"body": json.dumps({"token": token})}
         print("[INFO] Invoking validateToken function with payload:", json.dumps(payload))
@@ -60,18 +59,18 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': 'Unauthorized - Invalid or expired token'})
             }
 
-        # Extract user information from validation response
+        # Extract authenticated user information
         user_info = json.loads(validation_result.get('body', '{}'))
-        authenticated_pk = user_info.get('PK')  # Get PK of the authenticated user
-        role = user_info.get('role')
-        print(f"[DEBUG] Authenticated user PK: {authenticated_pk}, Role: {role}")
+        authenticated_pk = user_info.get('PK')
+        authenticated_role = user_info.get('role')
+        print(f"[INFO] Authenticated user PK: {authenticated_pk}, Role: {authenticated_role}")
 
-        if role != 'distributor':
-            print("[WARNING] User is not authorized to create delivery persons")
+        if authenticated_role != 'distributor':
+            print("[WARNING] User is not authorized to create clients")
             return {
                 'statusCode': 403,
                 'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'Unauthorized - Only distributors can create delivery persons'})
+                'body': json.dumps({'error': 'Unauthorized - Only distributors can create clients'})
             }
 
         # Parse request body
@@ -93,15 +92,16 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': 'Invalid JSON in request body'})
             }
 
-        pk = body.get('pk')  # Distributor PK
-        name = body.get('name')
-        lastName = body.get('lastName')
-        phoneNumber = body.get('phoneNumber')
-        email = body.get('email')
-        password = body.get('password')
-        dni = body.get('dni')
+        # Extract fields from request body
+        name = body.get('Nombre')
+        lastName = body.get('Apellido')
+        dni = body.get('DNI')
+        phoneNumber = body.get('Teléfono')
+        email = body.get('Email')
+        address = body.get('Dirección')
+        distributor = body.get('Distributor')
 
-        if not all([pk, name, lastName, phoneNumber, email, password, dni]):
+        if not all([name, lastName, dni, phoneNumber, email, address, distributor]):
             print("[WARNING] Missing required fields")
             return {
                 'statusCode': 400,
@@ -109,78 +109,41 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': 'Missing required fields'})
             }
 
-        # Ensure that the PK in the request matches the authenticated user's PK
-        # SK of a distributor is always 'metadata'
-        if pk != authenticated_pk:
-            print("[WARNING] User is attempting to access unauthorized resources")
+        # Ensure the authenticated user is creating clients under their own distributor account
+        if distributor != authenticated_pk:
+            print("[WARNING] User is attempting to create clients for an unauthorized distributor")
             return {
                 'statusCode': 403,
                 'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'Unauthorized - You can only manage your own resources'})
+                'body': json.dumps({'error': 'Unauthorized - You can only create clients under your own distributor account'})
             }
 
-        # Check if the PK corresponds to a distributor
-        print(f"[INFO] Verifying if PK={pk} corresponds to a distributor")
-        distributor_response = user_table.get_item(
-            Key={
-                'PK': pk,
-                'SK': 'metadata'
-            }
-        )
-        print(f"[DEBUG] Distributor query response: {distributor_response}")
+        # Generate a unique ID for the client
+        client_id = str(uuid.uuid4())
 
-        if 'Item' not in distributor_response or distributor_response['Item'].get('role') != 'distributor':
-            print("[WARNING] The provided PK does not belong to a valid distributor")
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'Invalid PK - No distributor found with the provided PK'})
-            }
-
-        # Check if the email is already registered
-        print(f"[INFO] Checking if email is already registered: {email}")
-        email_response = user_table.query(
-            IndexName=email_index,
-            KeyConditionExpression=Key('email').eq(email)
-        )
-        print(f"[DEBUG] Email query response: {email_response}")
-
-        if email_response['Items']:
-            print("[WARNING] Email is already registered")
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'The email is already registered'})
-            }
-
-        # Create the delivery person
-        delivery_person_id = str(uuid.uuid4())
-        sk = delivery_person_id
-        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        # Create client item
         item = {
-            'PK': pk,
-            'SK': sk,
-            'email': email,
-            'password_hash': hashed_password,
-            'role': 'delivery_person',
-            'name': name,
-            'lastName': lastName,
-            'phoneNumber': phoneNumber,
-            'dni': dni,
+            'PK': distributor,
+            'SK': client_id,
+            'Nombre': name,
+            'Apellido': lastName,
+            'DNI': dni,
+            'Teléfono': phoneNumber,
+            'Email': email,
+            'Dirección': address,
             'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
 
-        print(f"[INFO] Saving delivery person to DynamoDB: {item}")
-        user_table.put_item(Item=item)
+        print(f"[INFO] Saving client to DynamoDB: {item}")
+        client_table.put_item(Item=item)
 
         print("[INFO] Returning successful response")
         return {
             'statusCode': 201,
             'headers': {'Content-Type': 'application/json'},
             'body': json.dumps({
-                'message': 'Delivery person created successfully',
-                'PK': pk,
-                'SK': sk
+                'message': 'Client created successfully',
+                'ID': client_id
             })
         }
 

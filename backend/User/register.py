@@ -134,8 +134,8 @@ def lambda_handler(event, context):
                 'token': token,
                 'expiration': expiration,
                 'role': 'distributor',
-                'pk': pk,
-                'sk': sk
+                'PK': pk,
+                'SK': sk
             }
         )
 

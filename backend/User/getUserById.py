@@ -1,11 +1,10 @@
 import boto3
 import os
-from boto3.dynamodb.conditions import Key
 import json
+from boto3.dynamodb.conditions import Key
 
 def lambda_handler(event, context):
     try:
-        # Log the incoming event
         print("[INFO] Received event:", json.dumps(event, indent=2))
         
         dynamodb = boto3.resource('dynamodb')
@@ -21,9 +20,7 @@ def lambda_handler(event, context):
             print(f"[ERROR] Missing environment variable: {str(env_error)}")
             return {
                 'statusCode': 500,
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({'error': f"Missing environment variable: {str(env_error)}"})
             }
         
@@ -36,17 +33,13 @@ def lambda_handler(event, context):
             print("[WARNING] Authorization token is missing")
             return {
                 'statusCode': 400,
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({'error': 'Authorization token is missing'})
             }
 
         # Invoke validateToken function
         lambda_client = boto3.client('lambda')
-        payload = {
-            "body": json.dumps({"token": token})
-        }
+        payload = {"body": json.dumps({"token": token})}
         print("[INFO] Invoking validateToken function with payload:", json.dumps(payload))
         
         validate_response = lambda_client.invoke(
@@ -62,11 +55,14 @@ def lambda_handler(event, context):
             print("[WARNING] Token validation failed")
             return {
                 'statusCode': 403,
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({'error': 'Unauthorized - Invalid or expired token'})
             }
+
+        # Extract authenticated user information
+        user_info = json.loads(validation_result.get('body', '{}'))
+        authenticated_pk = user_info.get('PK')
+        print(f"[INFO] Authenticated user PK: {authenticated_pk}")
 
         # Extract PK and SK from path parameters
         try:
@@ -77,29 +73,29 @@ def lambda_handler(event, context):
             print(f"[ERROR] Missing path parameter: {str(path_error)}")
             return {
                 'statusCode': 400,
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({'error': f'Missing path parameter: {str(path_error)}'})
+            }
+
+        # Ensure the authenticated user is authorized to access the resource
+        if pk != authenticated_pk:
+            print("[WARNING] User is attempting to access unauthorized resources")
+            return {
+                'statusCode': 403,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({'error': 'Unauthorized - You can only access resources under your own account'})
             }
 
         # Query DynamoDB to get the user
         print(f"[INFO] Querying DynamoDB for PK={pk} and SK={sk}")
-        response = user_table.get_item(
-            Key={
-                'PK': pk,
-                'SK': sk
-            }
-        )
+        response = user_table.get_item(Key={'PK': pk, 'SK': sk})
         print(f"[DEBUG] DynamoDB get_item response: {response}")
 
         if 'Item' not in response:
             print("[WARNING] User not found in DynamoDB")
             return {
                 'statusCode': 404,
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({'error': 'User not found'})
             }
 
@@ -114,9 +110,7 @@ def lambda_handler(event, context):
         print("[INFO] Returning successful response")
         return {
             'statusCode': 200,
-            'headers': {
-                'Content-Type': 'application/json'
-            },
+            'headers': {'Content-Type': 'application/json'},
             'body': json.dumps(user)
         }
 
@@ -124,17 +118,13 @@ def lambda_handler(event, context):
         print(f"[ERROR] KeyError encountered: {str(e)}")
         return {
             'statusCode': 400,
-            'headers': {
-                'Content-Type': 'application/json'
-            },
+            'headers': {'Content-Type': 'application/json'},
             'body': json.dumps({'error': f'Missing field: {str(e)}'})
         }
     except Exception as e:
         print(f"[ERROR] Unexpected error: {str(e)}")
         return {
             'statusCode': 500,
-            'headers': {
-                'Content-Type': 'application/json'
-            },
+            'headers': {'Content-Type': 'application/json'},
             'body': json.dumps({'error': 'Internal Server Error', 'details': str(e)})
         }

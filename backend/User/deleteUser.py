@@ -18,9 +18,7 @@ def lambda_handler(event, context):
             print(f"[ERROR] Missing environment variable: {str(env_error)}")
             return {
                 'statusCode': 500,
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({'error': f"Missing environment variable: {str(env_error)}"})
             }
 
@@ -33,9 +31,7 @@ def lambda_handler(event, context):
             print("[WARNING] Authorization token is missing")
             return {
                 'statusCode': 400,
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({'error': 'Authorization token is missing'})
             }
 
@@ -57,17 +53,15 @@ def lambda_handler(event, context):
             print("[WARNING] Token validation failed")
             return {
                 'statusCode': 403,
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({'error': 'Unauthorized - Invalid or expired token'})
             }
 
         # Extract authenticated user information
         user_info = json.loads(validation_result.get('body', '{}'))
         authenticated_pk = user_info.get('PK')
-        authenticated_sk = user_info.get('SK')
-        print(f"[INFO] Authenticated user PK: {authenticated_pk}, SK: {authenticated_sk}")
+        authenticated_role = user_info.get('role')
+        print(f"[INFO] Authenticated user PK: {authenticated_pk}, Role: {authenticated_role}")
 
         # Extract PK and SK from path parameters
         try:
@@ -78,40 +72,20 @@ def lambda_handler(event, context):
             print(f"[ERROR] Missing path parameter: {str(path_error)}")
             return {
                 'statusCode': 400,
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({'error': f'Missing path parameter: {str(path_error)}'})
-            }
-
-        # Ensure the authenticated user is authorized to delete the resource
-        if pk != authenticated_pk or sk != authenticated_sk:
-            print("[WARNING] User is attempting to access unauthorized resources")
-            return {
-                'statusCode': 403,
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
-                'body': json.dumps({'error': 'Unauthorized - You can only delete your own resources'})
             }
 
         # Check if the user exists in DynamoDB
         print(f"[INFO] Checking if user exists with PK={pk} and SK={sk}")
-        get_response = user_table.get_item(
-            Key={
-                'PK': pk,
-                'SK': sk
-            }
-        )
+        get_response = user_table.get_item(Key={'PK': pk, 'SK': sk})
         print(f"[DEBUG] DynamoDB get_item response: {get_response}")
 
         if 'Item' not in get_response:
             print("[WARNING] User does not exist")
             return {
                 'statusCode': 404,
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({'error': 'User not found'})
             }
 
@@ -119,6 +93,24 @@ def lambda_handler(event, context):
         user_role = user_to_delete.get('role')
         print(f"[INFO] Role of user to delete: {user_role}")
 
+        # Authorization logic
+        if authenticated_pk != pk:
+            print("[WARNING] User is attempting to delete unauthorized resources")
+            return {
+                'statusCode': 403,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({'error': 'Unauthorized - You can only delete resources under your own account'})
+            }
+
+        if authenticated_role == 'delivery_person' and user_role == 'distributor':
+            print("[WARNING] A delivery person cannot delete a distributor")
+            return {
+                'statusCode': 403,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({'error': 'Unauthorized - A delivery person cannot delete a distributor'})
+            }
+
+        # Perform deletion
         if user_role == 'distributor':
             # Delete all users with the same PK (distributor and associated delivery persons)
             print("[INFO] Deleting distributor and all associated delivery persons")
@@ -136,40 +128,30 @@ def lambda_handler(event, context):
                             'SK': item['SK']
                         }
                     )
-        elif user_role == 'delivery_person':
-            # Delete only the specific delivery person
-            print("[INFO] Deleting delivery person")
+        else:
+            # Delete only the specific user
+            print(f"[INFO] Deleting user with PK={pk} and SK={sk}")
             user_table.delete_item(
                 Key={
                     'PK': pk,
                     'SK': sk
                 }
             )
-        else:
-            print("[WARNING] Unsupported role for deletion")
-            return {
-                'statusCode': 400,
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
-                'body': json.dumps({'error': 'Unsupported role for deletion'})
-            }
 
         print("[INFO] User deletion successful")
         return {
             'statusCode': 200,
-            'headers': {
-                'Content-Type': 'application/json'
-            },
-            'body': json.dumps({'message': 'User and associated accounts deleted successfully' if user_role == 'distributor' else 'User deleted successfully'})
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({
+                'message': 'User and associated accounts deleted successfully'
+                if user_role == 'distributor' else 'User deleted successfully'
+            })
         }
 
     except Exception as e:
         print(f"[ERROR] Unexpected error: {str(e)}")
         return {
             'statusCode': 500,
-            'headers': {
-                    'Content-Type': 'application/json'
-                },
+            'headers': {'Content-Type': 'application/json'},
             'body': json.dumps({'error': 'Internal Server Error', 'details': str(e)})
         }

@@ -7,7 +7,6 @@ def lambda_handler(event, context):
     try:
         print("[INFO] Received event:", json.dumps(event, indent=2))
 
-        # Initialize DynamoDB
         dynamodb = boto3.resource('dynamodb')
 
         # Environment variables
@@ -67,8 +66,7 @@ def lambda_handler(event, context):
         # Extract authenticated user information
         user_info = json.loads(validation_result.get('body', '{}'))
         authenticated_pk = user_info.get('PK')
-        authenticated_sk = user_info.get('SK')
-        print(f"[INFO] Authenticated user PK: {authenticated_pk}, SK: {authenticated_sk}")
+        print(f"[INFO] Authenticated user PK: {authenticated_pk}")
 
         # Extract PK and SK from path parameters
         try:
@@ -85,18 +83,7 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': f'Missing path parameter: {str(path_error)}'})
             }
 
-        # Ensure the authenticated user is authorized to update the resource
-        if pk != authenticated_pk or sk != authenticated_sk:
-            print("[WARNING] User is attempting to update unauthorized resources")
-            return {
-                'statusCode': 403,
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
-                'body': json.dumps({'error': 'Unauthorized - You can only update your own resources'})
-            }
-
-        # Check if user exists in DynamoDB
+        # Ensure the resource exists
         print(f"[INFO] Checking if user exists with PK={pk} and SK={sk}")
         user_check = user_table.get_item(Key={'PK': pk, 'SK': sk})
         print(f"[DEBUG] DynamoDB get_item response: {user_check}")
@@ -109,6 +96,18 @@ def lambda_handler(event, context):
                     'Content-Type': 'application/json'
                 },
                 'body': json.dumps({'error': 'User not found'})
+            }
+
+        # Authorization check
+        # Ensure the authenticated PK matches the PK in the resource (ownership)
+        if pk != authenticated_pk:
+            print("[WARNING] User is attempting to update unauthorized resources")
+            return {
+                'statusCode': 403,
+                'headers': {
+                    'Content-Type': 'application/json'
+                },
+                'body': json.dumps({'error': 'Unauthorized - You can only update resources under your own account'})
             }
 
         # Parse body

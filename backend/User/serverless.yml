@@ -83,6 +83,14 @@ functions:
           path: /user/create-delivery-person
           method: post
           cors: true
+    
+  getAllDeliveryPerson:
+    handler: getAllDeliveryPerson.lambda_handler
+    events:
+      - http:
+          path: /delivery-person/all/{PK}
+          method: get
+          cors: true
 
 resources:
   Resources:

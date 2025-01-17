@@ -94,14 +94,17 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': 'Unauthorized - You can only access your own delivery persons'})
             }
 
-        # Handle pagination
+        # Handle pagination and limit
         query_params = event.get('queryStringParameters', {})
         exclusive_start_key = query_params.get('LastEvaluatedKey')
+        limit = int(query_params.get('limit', 10))  # Default limit is 10
         print(f"[INFO] LastEvaluatedKey for pagination: {exclusive_start_key}")
+        print(f"[INFO] Limit for query: {limit}")
 
         scan_kwargs = {
             'KeyConditionExpression': Key('PK').eq(pk),
-            'FilterExpression': Key('role').eq('delivery_person')
+            'FilterExpression': Key('role').eq('delivery_person'),
+            'Limit': limit
         }
 
         if exclusive_start_key:

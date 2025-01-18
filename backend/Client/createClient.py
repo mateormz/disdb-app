@@ -14,7 +14,7 @@ def lambda_handler(event, context):
         try:
             client_table_name = os.environ['TABLE_CLIENTS']
             user_table_name = os.environ['TABLE_USERS']
-            validate_function_name = f"{os.environ['SERVICE_NAME']}-{os.environ['STAGE']}-{os.environ['VALIDATE_TOKEN_FUNCTION']}"
+            validate_function_name = f"{os.environ['USER_API']}-{os.environ['STAGE']}-{os.environ['VALIDATE_TOKEN_FUNCTION']}"
             print("[INFO] Environment variables loaded successfully")
         except KeyError as env_error:
             print(f"[ERROR] Missing environment variable: {str(env_error)}")

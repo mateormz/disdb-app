@@ -20,6 +20,9 @@ provider:
     # Function names
     VALIDATE_TOKEN_FUNCTION: validateToken
 
+    # User function
+    USER_API: disdb-user-api
+
 functions:
   createClient:
     handler: createClient.lambda_handler

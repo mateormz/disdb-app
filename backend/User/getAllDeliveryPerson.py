@@ -97,7 +97,7 @@ def lambda_handler(event, context):
         # Handle pagination and limit
         query_params = event.get('queryStringParameters', {})
         exclusive_start_key = query_params.get('LastEvaluatedKey') if query_params else None
-        limit = int(query_params.get('limit', 10))  # Default limit is 10
+        limit = int(query_params.get('limit', 10)) if query_params else 10
         print(f"[INFO] LastEvaluatedKey for pagination: {exclusive_start_key}")
         print(f"[INFO] Limit for query: {limit}")
 

@@ -96,7 +96,7 @@ def lambda_handler(event, context):
 
         # Handle pagination and limit
         query_params = event.get('queryStringParameters', {})
-        exclusive_start_key = query_params.get('LastEvaluatedKey')
+        exclusive_start_key = query_params.get('LastEvaluatedKey') if query_params else None
         limit = int(query_params.get('limit', 10))  # Default limit is 10
         print(f"[INFO] LastEvaluatedKey for pagination: {exclusive_start_key}")
         print(f"[INFO] Limit for query: {limit}")
@@ -108,7 +108,10 @@ def lambda_handler(event, context):
         }
 
         if exclusive_start_key:
-            scan_kwargs['ExclusiveStartKey'] = json.loads(exclusive_start_key)
+            try:
+                scan_kwargs['ExclusiveStartKey'] = json.loads(exclusive_start_key)
+            except json.JSONDecodeError:
+                print("[WARNING] Invalid LastEvaluatedKey format, ignoring...")
 
         print("[INFO] Querying DynamoDB for delivery persons")
         response = user_table.query(**scan_kwargs)

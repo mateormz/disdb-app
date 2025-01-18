@@ -2,6 +2,7 @@ import boto3
 import os
 import json
 from boto3.dynamodb.conditions import Key
+from urllib.parse import quote, unquote
 
 def lambda_handler(event, context):
     try:
@@ -96,10 +97,17 @@ def lambda_handler(event, context):
 
         # Handle pagination and limit
         query_params = event.get('queryStringParameters', {})
-        exclusive_start_key = query_params.get('LastEvaluatedKey') if query_params else None
+        encoded_last_evaluated_key = query_params.get('LastEvaluatedKey') if query_params else None
         limit = int(query_params.get('limit', 10)) if query_params else 10
-        print(f"[INFO] LastEvaluatedKey for pagination: {exclusive_start_key}")
+
         print(f"[INFO] Limit for query: {limit}")
+        exclusive_start_key = None
+        if encoded_last_evaluated_key:
+            try:
+                exclusive_start_key = json.loads(unquote(encoded_last_evaluated_key))
+                print(f"[INFO] Decoded LastEvaluatedKey: {exclusive_start_key}")
+            except json.JSONDecodeError:
+                print("[WARNING] Invalid LastEvaluatedKey format, ignoring...")
 
         scan_kwargs = {
             'KeyConditionExpression': Key('PK').eq(pk),
@@ -108,10 +116,7 @@ def lambda_handler(event, context):
         }
 
         if exclusive_start_key:
-            try:
-                scan_kwargs['ExclusiveStartKey'] = json.loads(exclusive_start_key)
-            except json.JSONDecodeError:
-                print("[WARNING] Invalid LastEvaluatedKey format, ignoring...")
+            scan_kwargs['ExclusiveStartKey'] = exclusive_start_key
 
         print("[INFO] Querying DynamoDB for delivery persons")
         response = user_table.query(**scan_kwargs)
@@ -121,13 +126,16 @@ def lambda_handler(event, context):
         delivery_persons = response.get('Items', [])
         last_evaluated_key = response.get('LastEvaluatedKey')
 
-        print("[INFO] Returning successful response")
+        # Encode LastEvaluatedKey for the response
+        encoded_last_evaluated_key = quote(json.dumps(last_evaluated_key)) if last_evaluated_key else None
+        print(f"[INFO] Encoded LastEvaluatedKey for response: {encoded_last_evaluated_key}")
+
         return {
             'statusCode': 200,
             'headers': {'Content-Type': 'application/json'},
             'body': json.dumps({
                 'delivery_persons': delivery_persons,
-                'LastEvaluatedKey': last_evaluated_key
+                'LastEvaluatedKey': encoded_last_evaluated_key
             })
         }
 

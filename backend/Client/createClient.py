@@ -143,7 +143,15 @@ def lambda_handler(event, context):
             'headers': {'Content-Type': 'application/json'},
             'body': json.dumps({
                 'message': 'Client created successfully',
-                'ID': client_id
+                'PK': distributor,
+                'SK': client_id,
+                'Nombre': name,
+                'Apellido': lastName,
+                'DNI': dni,
+                'Teléfono': phoneNumber,
+                'Email': email,
+                'Dirección': address,
+                'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             })
         }
 

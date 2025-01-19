@@ -39,6 +39,22 @@ functions:
           path: /client/get/{PK}/{SK}
           method: get
           cors: true
+  
+  updateClient:
+    handler: updateClient.lambda_handler
+    events:
+      - http:
+          path: /client/update/{PK}/{SK}
+          method: put
+          cors: true
+
+  deleteClient:
+    handler: deleteClient.lambda_handler
+    events:
+      - http:
+          path: /client/delete/{PK}/{SK}
+          method: delete
+          cors: true
 
 resources:
   Resources:

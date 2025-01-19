@@ -31,6 +31,14 @@ functions:
           path: /client/create
           method: post
           cors: true
+  
+  getClientByID:
+    handler: getClientByID.lambda_handler
+    events:
+      - http:
+          path: /client/get
+          method: get
+          cors: true
 
 resources:
   Resources:

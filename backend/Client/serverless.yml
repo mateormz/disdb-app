@@ -60,7 +60,7 @@ functions:
     handler: getAllClients.lambda_handler
     events:
       - http:
-          path: /client/getAll/{PK}/
+          path: /client/getAll/{PK}
           method: get
           cors: true
 

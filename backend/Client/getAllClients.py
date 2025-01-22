@@ -78,8 +78,8 @@ def lambda_handler(event, context):
             }
 
         # Ensure the authenticated user matches or belongs to the distributor
-        if authenticated_role == 'delivery_person' and pk != authenticated_pk:
-            print("[WARNING] Unauthorized access - Repartidor cannot access another distributor's clients")
+        if  pk != authenticated_pk:
+            print("[WARNING] Unauthorized access - Distributor cannot access another distributor's clients")
             return {
                 'statusCode': 403,
                 'headers': {'Content-Type': 'application/json'},

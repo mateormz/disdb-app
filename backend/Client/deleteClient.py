@@ -58,8 +58,7 @@ def lambda_handler(event, context):
         # Extract authenticated user information
         user_info = json.loads(validation_result.get('body', '{}'))
         authenticated_pk = user_info.get('PK')
-        authenticated_role = user_info.get('role')
-        print(f"[INFO] Authenticated user PK: {authenticated_pk}, Role: {authenticated_role}")
+        print(f"[INFO] Authenticated user PK: {authenticated_pk}")
 
         # Parse path parameters
         try:
@@ -90,15 +89,8 @@ def lambda_handler(event, context):
         client = response['Item']
 
         # Authorization: Ensure user has access
-        if authenticated_role == 'distributor' and client['PK'] != authenticated_pk:
-            print("[WARNING] Distributor is trying to delete unauthorized client data")
-            return {
-                'statusCode': 403,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'Unauthorized - You can only delete your own clients'})
-            }
-        elif authenticated_role == 'delivery_person' and client['PK'] != authenticated_pk:
-            print("[WARNING] Delivery person is trying to delete unauthorized client data")
+        if client['PK'] != authenticated_pk:
+            print("[WARNING] User is trying to delete unauthorized client data")
             return {
                 'statusCode': 403,
                 'headers': {'Content-Type': 'application/json'},

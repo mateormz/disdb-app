@@ -120,12 +120,12 @@ def lambda_handler(event, context):
         item = {
             'PK': distributor,
             'SK': client_id,
-            'Nombre': name,
-            'Apellido': lastName,
-            'DNI': dni,
-            'Teléfono': phoneNumber,
-            'Email': email,
-            'Dirección': address,
+            'name': name,
+            'lastName': lastName,
+            'dni': dni,
+            'phoneNumber': phoneNumber,
+            'email': email,
+            'address': address,
             'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
 
@@ -140,12 +140,12 @@ def lambda_handler(event, context):
                 'message': 'Client created successfully',
                 'PK': distributor,
                 'SK': client_id,
-                'Nombre': name,
-                'Apellido': lastName,
-                'DNI': dni,
-                'Teléfono': phoneNumber,
-                'Email': email,
-                'Dirección': address,
+                'name': name,
+                'lastName': lastName,
+                'dni': dni,
+                'phoneNumber': phoneNumber,
+                'email': email,
+                'address': address,
                 'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             })
         }

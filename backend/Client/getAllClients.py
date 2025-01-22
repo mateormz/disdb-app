@@ -1,19 +1,19 @@
 import boto3
-import uuid
 import os
 import json
-from datetime import datetime
+from boto3.dynamodb.conditions import Key
+from urllib.parse import quote, unquote
 
 def lambda_handler(event, context):
     try:
         print("[INFO] Received event:", json.dumps(event, indent=2))
 
+        # Initialize DynamoDB
         dynamodb = boto3.resource('dynamodb')
 
         # Environment variables
         try:
             client_table_name = os.environ['TABLE_CLIENTS']
-            user_table_name = os.environ['TABLE_USERS']
             validate_function_name = f"{os.environ['USER_API']}-{os.environ['STAGE']}-{os.environ['VALIDATE_TOKEN_FUNCTION']}"
             print("[INFO] Environment variables loaded successfully")
         except KeyError as env_error:
@@ -25,9 +25,8 @@ def lambda_handler(event, context):
             }
 
         client_table = dynamodb.Table(client_table_name)
-        user_table = dynamodb.Table(user_table_name)
 
-        # Extract Authorization token
+        # Extract Authorization token from headers
         token = event.get('headers', {}).get('Authorization')
         print(f"[DEBUG] Authorization token: {token}")
         if not token:
@@ -49,7 +48,8 @@ def lambda_handler(event, context):
             Payload=json.dumps(payload)
         )
         validation_result = json.loads(validate_response['Payload'].read())
-        print("[INFO] Validation function response received:", validation_result)
+        print("[INFO] Validation function response received")
+        print(f"[DEBUG] Validation result: {validation_result}")
 
         if validation_result.get('statusCode') != 200:
             print("[WARNING] Token validation failed")
@@ -65,88 +65,67 @@ def lambda_handler(event, context):
         authenticated_role = user_info.get('role')
         print(f"[INFO] Authenticated user PK: {authenticated_pk}, Role: {authenticated_role}")
 
-        # Parse request body
-        if 'body' not in event or not event['body']:
-            print("[WARNING] Request body is missing")
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'Request body is missing'})
-            }
-
+        # Extract PK from path parameters
         try:
-            body = json.loads(event['body'])
-        except json.JSONDecodeError as e:
-            print(f"[ERROR] Failed to parse JSON body: {str(e)}")
+            pk = event['pathParameters']['PK']
+            print(f"[INFO] Path parameter retrieved: PK={pk}")
+        except KeyError as path_error:
+            print(f"[ERROR] Missing path parameter: {str(path_error)}")
             return {
                 'statusCode': 400,
                 'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'Invalid JSON in request body'})
+                'body': json.dumps({'error': f'Missing path parameter: {str(path_error)}'})
             }
 
-        # Extract fields from request body
-        name = body.get('Nombre')
-        lastName = body.get('Apellido')
-        dni = body.get('DNI')
-        phoneNumber = body.get('Teléfono')
-        email = body.get('Email')
-        address = body.get('Dirección')
-        distributor = body.get('Distributor')
-
-        if not all([name, lastName, dni, phoneNumber, email, address, distributor]):
-            print("[WARNING] Missing required fields")
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'Missing required fields'})
-            }
-
-        # Ensure user authorization
-        if authenticated_role == 'distributor' and distributor != authenticated_pk:
-            print("[WARNING] Distributor is attempting to create clients for an unauthorized account")
+        # Ensure the authenticated user matches or belongs to the distributor
+        if authenticated_role == 'delivery_person' and pk != authenticated_pk:
+            print("[WARNING] Unauthorized access - Repartidor cannot access another distributor's clients")
             return {
                 'statusCode': 403,
                 'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'Unauthorized - You can only create clients under your own distributor account'})
+                'body': json.dumps({'error': 'Unauthorized - You can only access your own distributor\'s clients'})
             }
-        elif authenticated_role == 'delivery_person':
-            # Repartidores must associate clients with their distributor
-            distributor = authenticated_pk
 
-        # Generate a unique ID for the client
-        client_id = str(uuid.uuid4())
+        # Handle pagination and limit
+        query_params = event.get('queryStringParameters', {})
+        encoded_last_evaluated_key = query_params.get('LastEvaluatedKey') if query_params else None
+        limit = int(query_params.get('limit', 10)) if query_params else 10
 
-        # Create client item
-        item = {
-            'PK': distributor,
-            'SK': client_id,
-            'Nombre': name,
-            'Apellido': lastName,
-            'DNI': dni,
-            'Teléfono': phoneNumber,
-            'Email': email,
-            'Dirección': address,
-            'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"[INFO] Limit for query: {limit}")
+        exclusive_start_key = None
+        if encoded_last_evaluated_key:
+            try:
+                exclusive_start_key = json.loads(unquote(encoded_last_evaluated_key))
+                print(f"[INFO] Decoded LastEvaluatedKey: {exclusive_start_key}")
+            except json.JSONDecodeError:
+                print("[WARNING] Invalid LastEvaluatedKey format, ignoring...")
+
+        # Query DynamoDB for clients
+        scan_kwargs = {
+            'KeyConditionExpression': Key('PK').eq(pk),
+            'Limit': limit
         }
+        if exclusive_start_key:
+            scan_kwargs['ExclusiveStartKey'] = exclusive_start_key
 
-        print(f"[INFO] Saving client to DynamoDB: {item}")
-        client_table.put_item(Item=item)
+        print("[INFO] Querying DynamoDB for clients")
+        response = client_table.query(**scan_kwargs)
+        print(f"[DEBUG] DynamoDB query response: {response}")
 
-        print("[INFO] Returning successful response")
+        # Prepare the result
+        clients = response.get('Items', [])
+        last_evaluated_key = response.get('LastEvaluatedKey')
+
+        # Encode LastEvaluatedKey for the response
+        encoded_last_evaluated_key = quote(json.dumps(last_evaluated_key)) if last_evaluated_key else None
+        print(f"[INFO] Encoded LastEvaluatedKey for response: {encoded_last_evaluated_key}")
+
         return {
-            'statusCode': 201,
+            'statusCode': 200,
             'headers': {'Content-Type': 'application/json'},
             'body': json.dumps({
-                'message': 'Client created successfully',
-                'PK': distributor,
-                'SK': client_id,
-                'Nombre': name,
-                'Apellido': lastName,
-                'DNI': dni,
-                'Teléfono': phoneNumber,
-                'Email': email,
-                'Dirección': address,
-                'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                'clients': clients,
+                'LastEvaluatedKey': encoded_last_evaluated_key
             })
         }
 

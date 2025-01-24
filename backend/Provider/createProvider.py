@@ -4,7 +4,7 @@ import os
 import json
 from datetime import datetime
 
-def create_provider_handler(event, context):
+def lambda_handler(event, context):
     try:
         print("[INFO] Received event:", json.dumps(event, indent=2))
 

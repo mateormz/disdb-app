@@ -31,13 +31,13 @@ functions:
           method: post
           cors: true
   
-  # getProviderByID:
-  #   handler: getProviderByID.lambda_handler
-  #   events:
-  #     - http:
-  #         path: /provider/get/{PK}/{SK}
-  #         method: get
-  #         cors: true
+  getProviderByID:
+    handler: getProviderByID.lambda_handler
+    events:
+      - http:
+          path: /provider/get/{PK}/{SK}
+          method: get
+          cors: true
   
   # updateProvider:
   #   handler: updateProvider.lambda_handler

@@ -94,12 +94,13 @@ def create_provider_handler(event, context):
         # Extract fields from request body
         distributor_pk = body.get('distributor_pk')
         name = body.get('name')
+        lastName = body.get('lastName')
         dni = body.get('dni')
         ruc = body.get('ruc')
         phoneNumber1 = body.get('phoneNumber1')
         phoneNumber2 = body.get('phoneNumber2')
 
-        if not all([distributor_pk, name, dni, ruc, phoneNumber1]):
+        if not all([distributor_pk, name, lastName, dni, ruc, phoneNumber1]):
             print("[WARNING] Missing required fields")
             return {
                 'statusCode': 400,
@@ -124,6 +125,7 @@ def create_provider_handler(event, context):
             'PK': distributor_pk,
             'SK': provider_id,
             'name': name,
+            'lastName': lastName,
             'dni': dni,
             'ruc': ruc,
             'phoneNumber1': phoneNumber1,
@@ -144,6 +146,7 @@ def create_provider_handler(event, context):
                 'PK': item['PK'],
                 'SK': item['SK'],
                 'name': item['name'],
+                'lastName': item['lastName'],
                 'dni': item['dni'],
                 'ruc': item['ruc'],
                 'phoneNumber1': item['phoneNumber1'],

@@ -24,7 +24,7 @@ provider:
 
 functions:
   createProvider:
-    handler: createProvider.create_provider_handler
+    handler: createProvider.lambda_handler
     events:
       - http:
           path: /provider/create

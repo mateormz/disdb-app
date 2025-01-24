@@ -2,7 +2,7 @@ import boto3
 import os
 import json
 
-def get_provider_by_id_handler(event, context):
+def lambda_handler(event, context):
     try:
         print("[INFO] Received event:", json.dumps(event, indent=2))
 

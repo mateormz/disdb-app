@@ -131,7 +131,6 @@ def create_provider_handler(event, context):
             'phoneNumber1': phoneNumber1,
             'phoneNumber2': phoneNumber2,
             'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'created_by': authenticated_pk
         }
 
         print(f"[INFO] Saving provider to DynamoDB: {item}")

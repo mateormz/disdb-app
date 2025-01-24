@@ -39,29 +39,29 @@ functions:
           method: get
           cors: true
   
-  # updateProvider:
-  #   handler: updateProvider.lambda_handler
-  #   events:
-  #     - http:
-  #         path: /provider/update/{PK}/{SK}
-  #         method: put
-  #         cors: true
+  updateProvider:
+    handler: updateProvider.lambda_handler
+    events:
+      - http:
+          path: /provider/update/{PK}/{SK}
+          method: put
+          cors: true
 
-  # deleteProvider:
-  #   handler: deleteProvider.lambda_handler
-  #   events:
-  #     - http:
-  #         path: /provider/delete/{PK}/{SK}
-  #         method: delete
-  #         cors: true
+  deleteProvider:
+    handler: deleteProvider.lambda_handler
+    events:
+      - http:
+          path: /provider/delete/{PK}/{SK}
+          method: delete
+          cors: true
 
-  # getAllProviders:
-  #   handler: getAllProviders.lambda_handler
-  #   events:
-  #     - http:
-  #         path: /provider/getAll/{PK}
-  #         method: get
-  #         cors: true
+  getAllProviders:
+    handler: getAllProviders.lambda_handler
+    events:
+      - http:
+          path: /provider/getAll/{PK}
+          method: get
+          cors: true
 
 resources:
   Resources:
